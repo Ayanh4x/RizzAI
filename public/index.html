@@ -1117,7 +1117,7 @@ function seq_jump(){
   ];
 }
 function seq_clap(){
-  const steps=[{label:'Clapping! 👏',dur:0.3,emo:'excited',fn:t=>{const c=env(t);return{spine:[0.012-c*0.015,0,0],leftUpperArm:arm('L',0.40*c,0.06),rightUpperArm:arm('R',0.40*c,0.06),leftLowerArm:[0.10+c*0.28,0,0.04],rightLowerArm:[0.10+c*0.28,0,-0.04],...figures('L','open'),...fingers('R','open')};}}];
+  const steps=[{label:'Clapping! 👏',dur:0.3,emo:'excited',fn:t=>{const c=env(t);return{spine:[0.012-c*0.015,0,0],leftUpperArm:arm('L',0.40*c,0.06),rightUpperArm:arm('R',0.40*c,0.06),leftLowerArm:[0.10+c*0.28,0,0.04],rightLowerArm:[0.10+c*0.28,0,-0.04],...fingers('L','open'),...fingers('R','open')};}}];
   for(let i=0;i<5;i++) steps.push({dur:0.22,fn:t=>{const cl=A(S(t*PI));return{spine:[0.012-cl*0.014,0,0],leftUpperArm:arm('L',0.40,0.06),rightUpperArm:arm('R',0.40,0.06),leftLowerArm:[0.10+cl*0.26,0,cl*0.03],rightLowerArm:[0.10+cl*0.26,0,-cl*0.03],vrm_bodyY:cl*0.003,...fingers('L','open'),...fingers('R','open')};}});
   steps.push({dur:0.6,emo:'happy',fn:t=>{const c=1-env(t);return{spine:[0.012,0,0],leftUpperArm:arm('L',0.40*c,0.06),rightUpperArm:arm('R',0.40*c,0.06),leftLowerArm:[0.10+0.28*c,0,0.04],rightLowerArm:[0.10+0.28*c,0,-0.04],...fingers('L','open'),...fingers('R','open')};}});
   return steps;
@@ -1272,24 +1272,53 @@ function bootLoop(){
   tick();
 }
 
+/* ══════════════════════════════════════════════════════
+   CHAT UI — DOM references + helpers
+══════════════════════════════════════════════════════ */
+const msgsEl   = document.getElementById('msgs');
+const typingEl = document.getElementById('typing');
+const inputEl  = document.getElementById('uinput');
+const sendBtn  = document.getElementById('btn-send');
+const micBtn   = document.getElementById('btn-mic');
+
+function addMsg(role, text){
+  const d = document.createElement('div');
+  d.className = `msg ${role}`;
+  const now = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  d.innerHTML = `<div class="bubble">${text.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div>
+    <div class="meta">${role==='ai'?'RizzAI':'You'} · ${now}</div>`;
+  msgsEl.insertBefore(d, typingEl);
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+}
+
+function setTyping(on){
+  typingEl.classList.toggle('on', on);
+  sendBtn.disabled = on;
+  msgsEl.scrollTop = msgsEl.scrollHeight;
+}
+
+function showToast(msg, dur=4000){
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('on');
+  setTimeout(()=>el.classList.remove('on'), dur);
+}
+
 async function sendMsg(text){
   text=text.trim(); if(!text)return;
   inputEl.value=''; inputEl.style.height='';
   addMsg('user',text);
 
   /* ── Check for animation command first ── */
-  const cmd = detectCommand(text);
+  const cmd = detectCmd(text);
   if(cmd){
     setTyping(false);
-    const response = getRandom(CMD_RESPONSES[cmd.type]);
+    const response = getRnd(CMD_REPLIES[cmd.type]);
     addMsg('ai', response);
     applyEmo('excited');
-    // Play choreo
     runChoreo(cmd.build());
-    // Speak response
     await speakEL(
       response,
-      ()=>{ isTalking=true; nextTalkGest=0; document.getElementById('wave').classList.add('on'); },
+      ()=>{ isTalking=true; talkGestT=0; document.getElementById('wave').classList.add('on'); },
       ()=>{ isTalking=false; document.getElementById('wave').classList.remove('on'); setTTSStatus(''); }
     );
     return;
@@ -1309,7 +1338,7 @@ async function sendMsg(text){
 
     await speakEL(
       reply,
-      ()=>{ isTalking=true; nextTalkGest=0; document.getElementById('wave').classList.add('on'); },
+      ()=>{ isTalking=true; talkGestT=0; document.getElementById('wave').classList.add('on'); },
       ()=>{ isTalking=false; document.getElementById('wave').classList.remove('on'); applyEmo('listening'); setTTSStatus(''); }
     );
   }catch(e){
