@@ -1,0 +1,18 @@
+# Cloudflare Pages _headers
+# Cache the heavy static files aggressively
+# Once avatar.vrm is downloaded once, it loads instantly on every visit
+
+/avatar.vrm
+  Cache-Control: public, max-age=31536000, immutable
+  Content-Type: model/gltf-binary
+
+/*.vrm
+  Cache-Control: public, max-age=31536000, immutable
+
+/index.html
+  Cache-Control: public, max-age=0, must-revalidate
+
+# Security headers
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY

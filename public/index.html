@@ -4,7 +4,16 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0"/>
 <title>RizzAI ✨</title>
+<!-- Performance: DNS + TCP warmup -->
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin/>
+<!-- Preload Three.js modules before importmap executes -->
+<link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.module.js" crossorigin/>
+<link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@2.1.2/lib/three-vrm.module.js" crossorigin/>
+<!-- Preload avatar in parallel with JS parsing -->
+<link rel="preload" href="./avatar.vrm" as="fetch" crossorigin/>
+<!-- Fonts: display=swap so text renders immediately -->
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <style>
 /* ════════════════════════════════════════════════════
@@ -332,28 +341,30 @@ html,body{
 }
 
 /* ════════════════════════════════════════════════════
-   LOADING SCREEN
+   LOADING — avatar panel only, NOT full screen
+   Chat panel is immediately usable!
 ════════════════════════════════════════════════════ */
 #loading{
-  position:fixed;inset:0;z-index:300;
-  background:var(--bg0);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;
-  transition:opacity .8s;
+  /* Sits inside #avatar-panel only */
+  position:absolute;inset:0;z-index:50;
+  background:rgba(13,6,24,0.93);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+  transition:opacity .6s;
 }
 #loading.hide{opacity:0;pointer-events:none}
-.load-rings{position:relative;width:70px;height:70px}
+.load-rings{position:relative;width:56px;height:56px}
 .load-ring{
   position:absolute;inset:0;border-radius:50%;border:2.5px solid transparent;
   animation:spin 1s linear infinite;
 }
 .load-ring:nth-child(1){border-top-color:var(--p2);animation-duration:.9s}
-.load-ring:nth-child(2){border-right-color:var(--p1);animation-duration:1.3s;inset:8px}
-.load-ring:nth-child(3){border-bottom-color:var(--p3);animation-duration:1.7s;inset:16px}
+.load-ring:nth-child(2){border-right-color:var(--p1);animation-duration:1.3s;inset:7px}
+.load-ring:nth-child(3){border-bottom-color:var(--p3);animation-duration:1.7s;inset:14px}
 @keyframes spin{to{transform:rotate(360deg)}}
-#loading p{
-  color:var(--p3);font-size:13px;letter-spacing:2px;
-  font-family:var(--fontb);font-weight:600;
-}
+#loading p{color:var(--p3);font-size:12px;letter-spacing:2px;font-family:var(--fontb);font-weight:600}
+#lsub{font-size:10px!important;color:var(--txt3)!important;letter-spacing:1px!important;margin-top:-4px!important}
+#lprogbar{width:140px;height:3px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden;margin-top:2px}
+#lprogfill{height:100%;width:0%;background:linear-gradient(90deg,var(--p2),var(--p1));border-radius:3px;transition:width .3s ease}
 
 /* ════════════════════════════════════════════════════
    TOAST
@@ -398,19 +409,21 @@ html,body{
 </head>
 <body>
 <div id="bg"></div>
-<div id="loading">
-  <div class="load-rings">
-    <div class="load-ring"></div>
-    <div class="load-ring"></div>
-    <div class="load-ring"></div>
-  </div>
-  <p id="lpct">Loading RizzAI…</p>
-</div>
 <div id="toast"></div>
-
 <div id="app">
-  <!-- AVATAR -->
+  <!-- AVATAR — loading spinner lives HERE so chat is usable immediately -->
   <div id="avatar-panel">
+    <!-- Loading overlay: only covers avatar canvas, not the whole page -->
+    <div id="loading">
+      <div class="load-rings">
+        <div class="load-ring"></div>
+        <div class="load-ring"></div>
+        <div class="load-ring"></div>
+      </div>
+      <p id="lpct">Loading avatar…</p>
+      <div id="lprogbar"><div id="lprogfill"></div></div>
+      <p id="lsub">You can chat now ↓</p>
+    </div>
     <div id="etag">✨ ready</div>
     <div id="wave">
       <div class="wb"></div><div class="wb"></div><div class="wb"></div>
@@ -667,7 +680,12 @@ loader.load('./avatar.vrm',
     setTimeout(()=>overlay.remove(),800);
     bootLoop();
   },
-  p=>{ lpct.textContent=`Loading RizzAI… ${Math.round((p.loaded/(p.total||1))*100)}%`; },
+  p=>{
+    const pct=Math.round((p.loaded/(p.total||1))*100);
+    const fill=document.getElementById('lprogfill');
+    if(lpct) lpct.textContent=`Loading avatar… ${pct}%`;
+    if(fill) fill.style.width=pct+'%';
+  },
   e=>{ console.warn('VRM:',e); lpct.textContent='Avatar unavailable — chat works!'; overlay.classList.add('hide'); setTimeout(()=>overlay.remove(),1500); bootLoop(); }
 );
 
