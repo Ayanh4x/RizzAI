@@ -493,7 +493,6 @@ import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
 ══════════════════════════════════════════════════════ */
 // NVIDIA NIM — OpenAI-compatible endpoint
 /* ElevenLabs — called directly (has CORS enabled) */
-/* ElevenLabs voice settings — used by /api/tts Cloudflare Function */
 let history = [];
 
 /* ══════════════════════════════════════════════════════
@@ -516,19 +515,11 @@ async function callAI(msg){
 }
 
 /* ══════════════════════════════════════════════════════
-   ELEVENLABS TTS — via /api/tts Cloudflare Function
-   ✅ Solves CORS completely — runs server-side
-   ✅ Works on free tier — no browser restrictions
+   KOKORO TTS — 100% FREE, runs in browser, no API key ever
+   Uses WebGPU/WASM model from HuggingFace Transformers.js
+   First load ~82MB (cached forever after), then instant.
+   Voice: af_heart = warm natural female, perfect for anime
 ══════════════════════════════════════════════════════ */
-let currentAudio = null;
-
-function stopAudio(){
-  if(currentAudio){
-    currentAudio.pause(); currentAudio.src='';
-    try{ URL.revokeObjectURL(currentAudio._blob); }catch(_){}
-    currentAudio=null;
-  }
-}
 
 function cleanForTTS(text){
   return text
@@ -539,73 +530,140 @@ function cleanForTTS(text){
     .replace(/\s+/g,' ').trim();
 }
 
-async function speakEL(text, onStart, onEnd){
-  const clean=cleanForTTS(text);
-  if(!clean){ onEnd?.(); return; }
+// Kokoro state
+let kokoroReady  = false;
+let kokoroBusy   = false;
+let kokoroPipe   = null;
+let currentAudio = null;
 
-  // Kill any browser TTS immediately — prevents double voice
-  if('speechSynthesis' in window) window.speechSynthesis.cancel();
-
-  setTTSStatus('🎙️ Generating voice…');
+// Load Kokoro model async — starts loading as soon as page opens
+async function loadKokoro(){
   try{
-    const res = await fetch('/api/tts',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({ text: clean }),
+    setTTSStatus('🔄 Loading voice model…');
+    // Import Transformers.js from CDN
+    const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.1.2/dist/transformers.min.js');
+    // Use WASM backend — works everywhere without WebGPU
+    env.backends.onnx.wasm.numThreads = 1;
+    // Load Kokoro small model — 82MB, cached by browser after first load
+    kokoroPipe = await pipeline('text-to-speech', 'onnx-community/Kokoro-82M-v1.0-ONNX', {
+      dtype: 'fp32',
+      device: 'wasm',
     });
-
-    if(!res.ok){
-      const err=await res.text().catch(()=>'');
-      console.error('TTS error:',res.status,err);
-      throw new Error(`TTS ${res.status}`);
-    }
-
-    const blob    = await res.blob();
-    const blobUrl = URL.createObjectURL(blob);
-    stopAudio();
-
-    // Kill browser TTS again right before playing — belt and suspenders
-    if('speechSynthesis' in window) window.speechSynthesis.cancel();
-
-    const audio   = new Audio(blobUrl);
-    audio._blob   = blobUrl;
-    currentAudio  = audio;
-
-    audio.onended = ()=>{ URL.revokeObjectURL(blobUrl); currentAudio=null; setTTSStatus(''); onEnd?.(); };
-    audio.onerror = ()=>{ URL.revokeObjectURL(blobUrl); currentAudio=null; setTTSStatus(''); onEnd?.(); };
-
-    const playProm = audio.play();
-    if(playProm){
-      playProm.then(()=>{
-        // Only call onStart AFTER audio actually starts — not before
-        setTTSStatus('🌸 Speaking…');
-        onStart?.();
-      }).catch(()=>{
-        // Autoplay blocked — wait for tap
-        setTTSStatus('🔇 Tap screen to hear voice');
-        const resume=()=>{
-          if('speechSynthesis' in window) window.speechSynthesis.cancel();
-          audio.play().then(()=>{ setTTSStatus('🌸 Speaking…'); onStart?.(); }).catch(()=>onEnd?.());
-          document.removeEventListener('click',resume);
-          document.removeEventListener('touchstart',resume);
-        };
-        document.addEventListener('click',resume,{once:true});
-        document.addEventListener('touchstart',resume,{once:true});
-      });
-    } else {
-      setTTSStatus('🌸 Speaking…');
-      onStart?.();
-    }
-
-  }catch(e){
-    console.error('speakEL error:',e);
+    kokoroReady = true;
     setTTSStatus('');
-    // No fallback TTS — just end cleanly so we don't get double voice
-    onEnd?.();
+    console.log('✅ Kokoro TTS ready');
+  }catch(e){
+    console.warn('Kokoro failed to load, using Web Speech API fallback:', e);
+    kokoroReady = false;
+    setTTSStatus('');
   }
 }
 
+function stopAudio(){
+  if(currentAudio){
+    currentAudio.pause();
+    currentAudio.src = '';
+    currentAudio = null;
+  }
+  if('speechSynthesis' in window) window.speechSynthesis.cancel();
+  kokoroBusy = false;
+}
+
+async function speakEL(text, onStart, onEnd){
+  const clean = cleanForTTS(text);
+  if(!clean){ onEnd?.(); return; }
+
+  stopAudio();
+
+  // ── Use Kokoro if ready ──
+  if(kokoroReady && kokoroPipe && !kokoroBusy){
+    kokoroBusy = true;
+    setTTSStatus('🎙️ Generating…');
+    try{
+      // af_heart = warm natural American female voice
+      const out = await kokoroPipe(clean, { voice:'af_heart', speed:1.1 });
+      kokoroBusy = false;
+      if(!out?.audio){ throw new Error('No audio output'); }
+
+      // Convert Float32Array to WAV blob and play
+      const wav  = float32ToWav(out.audio, out.sampling_rate || 24000);
+      const url  = URL.createObjectURL(wav);
+      const audio = new Audio(url);
+      currentAudio = audio;
+
+      setTTSStatus('🌸 Speaking…');
+      onStart?.();
+
+      audio.onended = ()=>{
+        URL.revokeObjectURL(url);
+        currentAudio = null;
+        setTTSStatus('');
+        onEnd?.();
+      };
+      audio.onerror = ()=>{
+        URL.revokeObjectURL(url);
+        currentAudio = null;
+        setTTSStatus('');
+        onEnd?.();
+      };
+      audio.play().catch(()=>{ onEnd?.(); });
+      return;
+
+    }catch(e){
+      kokoroBusy = false;
+      console.warn('Kokoro speak error, using fallback:', e);
+      // Fall through to Web Speech API
+    }
+  }
+
+  // ── Web Speech API fallback (always works) ──
+  if(!('speechSynthesis' in window)){ onEnd?.(); return; }
+  window.speechSynthesis.cancel();
+  const utt = new SpeechSynthesisUtterance(clean);
+  // Pick best available voice
+  const vs = window.speechSynthesis.getVoices();
+  const v  = vs.find(x=>/google uk english female|samantha|zira|karen|aria/i.test(x.name))
+          || vs.find(x=>/female/i.test(x.name))
+          || vs.find(x=>/en/i.test(x.lang));
+  if(v) utt.voice = v;
+  utt.pitch = 1.30; utt.rate = 1.08; utt.volume = 1.0;
+  utt.onstart  = ()=>{ setTTSStatus('🌸 Speaking…'); onStart?.(); };
+  utt.onend    = ()=>{ setTTSStatus(''); onEnd?.(); };
+  utt.onerror  = ()=>{ setTTSStatus(''); onEnd?.(); };
+  setTimeout(()=> window.speechSynthesis.speak(utt), 50);
+}
+
+// Convert Float32Array PCM to WAV blob
+function float32ToWav(samples, sampleRate){
+  const len    = samples.length;
+  const buf    = new ArrayBuffer(44 + len*2);
+  const view   = new DataView(buf);
+  const write  = (o,s)=>{ for(let i=0;i<s.length;i++) view.setUint8(o+i,s.charCodeAt(i)); };
+  write(0,'RIFF');
+  view.setUint32(4,36+len*2,true);
+  write(8,'WAVE');
+  write(12,'fmt ');
+  view.setUint32(16,16,true);
+  view.setUint16(20,1,true);   // PCM
+  view.setUint16(22,1,true);   // mono
+  view.setUint32(24,sampleRate,true);
+  view.setUint32(28,sampleRate*2,true);
+  view.setUint16(32,2,true);
+  view.setUint16(34,16,true);
+  write(36,'data');
+  view.setUint32(40,len*2,true);
+  let off=44;
+  for(let i=0;i<len;i++,off+=2){
+    const s=Math.max(-1,Math.min(1,samples[i]));
+    view.setInt16(off,s<0?s*0x8000:s*0x7FFF,true);
+  }
+  return new Blob([buf],{type:'audio/wav'});
+}
+
 function setTTSStatus(msg){ document.getElementById('tts-status').textContent=msg; }
+
+// Start loading Kokoro immediately in background
+loadKokoro();
 
 /* ── Voice mic input ── */
 let recog=null;
