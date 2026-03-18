@@ -480,8 +480,8 @@ import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
 ══════════════════════════════════════════════════════ */
 // NVIDIA NIM — OpenAI-compatible endpoint
 /* ElevenLabs — called directly (has CORS enabled) */
-const EL_KEY   = 'sk_250212ffaad2004dbf6f427367e450fea3be5d2dedc8d3d1';
-const EL_VOICE = '1zUSi8LeHs9M2mV8X6YS';
+const EL_KEY   = '4b2d3d697fbd636d824c61cbb39c6d13d472760f31a010ffb195a6e12fedd6c4';
+const EL_VOICE = 'P7FvTlcy0R7Ek59pWvnW';
 const EL_URL   = `https://api.elevenlabs.io/v1/text-to-speech/${EL_VOICE}/stream`;
 
 let history = [];
@@ -681,9 +681,11 @@ renderer.shadowMap.enabled = true;
 panel.insertBefore(renderer.domElement, panel.firstChild);
 
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(26,W()/H(),0.1,20);
-camera.position.set(0,0.9,3.0);
-camera.lookAt(0,0.9,0);
+const camera = new THREE.PerspectiveCamera(22,W()/H(),0.1,20);
+// Positioned to show full avatar — head to just below hips
+// Pull back more so nothing gets clipped on any screen size
+camera.position.set(0, 1.05, 3.8);
+camera.lookAt(0, 1.05, 0);
 
 // Warm cinematic lighting
 scene.add(new THREE.AmbientLight(0xfff0ff,1.6));
@@ -744,10 +746,30 @@ const PTGT={}, PLIV={};
 function applyPose(map){
   for(const[k,v] of Object.entries(map)) PTGT[k]=[v[0],v[1],v[2]];
 }
+// Bone groups with different lerp speeds for natural feel
+// Fast = head/spine (responsive), Slow = arms/hands (fluid not robotic)
+const BONE_SPEEDS = {
+  head:0.14, neck:0.14, spine:0.10, chest:0.10, upperChest:0.10,
+  hips:0.08,
+  leftShoulder:0.08, rightShoulder:0.08,
+  leftUpperArm:0.07, rightUpperArm:0.07,   // ← slow = no robotic snapping
+  leftLowerArm:0.07, rightLowerArm:0.07,
+  leftHand:0.06,     rightHand:0.06,        // ← slowest = wrists drift naturally
+  leftUpperLeg:0.09, rightUpperLeg:0.09,
+  leftEye:0.18,      rightEye:0.18,
+};
+// Finger bones lerp at medium speed
+const FINGER_SP = 0.09;
+
 function tickBones(dt){
-  const sp=clamp(dt*9,0,1);
   for(const[n,t] of Object.entries(PTGT)){
     if(!PLIV[n]) PLIV[n]=[t[0],t[1],t[2]];
+    // Pick per-bone speed, default to medium
+    let sp;
+    const key=Object.keys(BONE_SPEEDS).find(k=>n.toLowerCase().includes(k.toLowerCase()));
+    if(key) sp=clamp(dt*60*BONE_SPEEDS[key],0,1);
+    else if(/thumb|index|middle|ring|little/i.test(n)) sp=clamp(dt*60*FINGER_SP,0,1);
+    else sp=clamp(dt*60*0.10,0,1);
     PLIV[n][0]=lerp(PLIV[n][0],t[0],sp);
     PLIV[n][1]=lerp(PLIV[n][1],t[1],sp);
     PLIV[n][2]=lerp(PLIV[n][2],t[2],sp);
@@ -828,62 +850,75 @@ function fingers(side,shape){
 
 // Shared breathing
 const breathe=(t,amt=0.012)=>S(t*1.45)*amt;
+// Multi-frequency noise for organic secondary motion
+const N=(t,f,a)=>S(t*f)*a;
+const N2=(t,f1,f2,a1,a2)=>S(t*f1)*a1+S(t*f2)*a2;
 
-// ── IDLE 1: Natural relaxed stand ──
+// ── IDLE 1: Natural relaxed stand — full secondary motion ──
 function idle_natural(t){
   const b=breathe(t);
   return {
-    hips:[0,0,0], spine:[0.012+b,0,0], chest:[0.006+b*.5,0,0],
-    upperChest:[b*.3,0,0], neck:[0.010,0,0],
-    head:[S(t*.48)*.009, S(t*.35)*.012, S(t*.60)*.006],
-    leftShoulder:[0,0,0.030+b*.2], rightShoulder:[0,0,-0.030-b*.2],
-    leftUpperArm:arm('L',0,0,0.06+b*.12), rightUpperArm:arm('R',0,0,0.06+b*.12),
-    leftLowerArm:fore('L',0.10), rightLowerArm:fore('R',0.10),
-    leftHand:[S(t*.8)*.007,0,-0.03], rightHand:[S(t*.8)*.007,0,0.03],
+    hips:[0,0,0],
+    spine:[0.012+b, N(t,0.44,0.006), N(t,0.61,0.005)],
+    chest:[0.006+b*.5, N(t,0.44,0.003), N(t,0.61,0.003)],
+    upperChest:[b*.3,0,0], neck:[0.010, N2(t,0.38,0.71,0.012,0.006), N2(t,0.52,0.89,0.007,0.003)],
+    head:[N2(t,.48,.81,.009,.005)+b*.1, N2(t,.35,.66,.012,.007), N2(t,.60,.93,.006,.003)],
+    leftShoulder:[0,0, 0.030+b*.2+N(t,.77,.004)],
+    rightShoulder:[0,0,-0.030-b*.2-N(t,.77,.004)],
+    leftUpperArm:  arm('L', N2(t,0.83,1.47,0.013,0.006)+0.008, N(t,0.66,0.008), 0.06+b*.10),
+    rightUpperArm: arm('R', N2(t,0.91,1.23,0.012,0.007)+0.008, N(t,0.72,0.008), 0.06+b*.10),
+    leftLowerArm:  [0.10+N(t,1.05,0.012), 0, 0.04+N(t,0.88,0.007)],
+    rightLowerArm: [0.10+N(t,0.98,0.012), 0,-0.04-N(t,0.92,0.007)],
+    leftHand:  [N2(t,1.1,1.83,0.016,0.009), N(t,1.44,0.008),-0.03+N(t,1.2,0.005)],
+    rightHand: [N2(t,1.23,1.67,0.014,0.008), N(t,1.38,0.008), 0.03+N(t,1.15,0.005)],
     leftUpperLeg:[0.02,0,0.01], rightUpperLeg:[0.02,0,-0.01],
     ...fingers('L','rest'), ...fingers('R','rest'),
   };
 }
 
-// ── IDLE 2: Gentle body sway ──
+// ── IDLE 2: Gentle body sway — arms lag behind hips ──
 function idle_sway(t){
-  const sw=S(t*.82)*.016, b=breathe(t,.010);
+  const sw=S(t*.82)*.018, b=breathe(t,.010);
+  const lag=S(t*.82-0.35)*.022;
   return {
-    hips:[0,sw*.35,0], spine:[0.012+b,-sw*.24,sw*.40],
-    chest:[0.006,-sw*.14,sw*.22], neck:[0.010,0,0],
-    head:[S(t*.52)*.009, S(t*.82)*.020, -sw*.12],
-    leftShoulder:[0,0,0.030+sw*.04], rightShoulder:[0,0,-0.030-sw*.04],
-    leftUpperArm:arm('L',S(t*.82)*.022,0,0.06), rightUpperArm:arm('R',S(t*.82)*.022,0,0.06),
-    leftLowerArm:fore('L',0.10), rightLowerArm:fore('R',0.10),
-    leftHand:[S(t*.82)*.010,0,-0.03], rightHand:[S(t*.82)*.010,0,0.03],
+    hips:[0,sw*.38,0], spine:[0.012+b,-sw*.24,sw*.42], chest:[0.006,-sw*.14,sw*.22],
+    neck:[0.010,0,0], head:[S(t*.52)*.009, S(t*.82)*.022+sw*.08, -sw*.10+N(t,0.61,0.006)],
+    leftShoulder:[0,0,0.030+sw*.05], rightShoulder:[0,0,-0.030-sw*.05],
+    leftUpperArm:  arm('L', lag+0.018+N(t,0.91,0.010), 0, 0.06),
+    rightUpperArm: arm('R', lag+0.018+N(t,0.83,0.010), 0, 0.06),
+    leftLowerArm:  [0.10+N(t,1.1,0.010), 0, 0.04+S(t*.82)*.008],
+    rightLowerArm: [0.10+N(t,1.0,0.010), 0,-0.04-S(t*.82)*.008],
+    leftHand:  [S(t*.82)*.012+N(t,1.4,0.008),0,-0.03],
+    rightHand: [S(t*.82)*.012+N(t,1.3,0.008),0, 0.03],
     ...fingers('L','rest'), ...fingers('R','rest'),
   };
 }
 
 // ── IDLE 3: Head look around curiously ──
 function idle_curious(t){
-  const h=S(t*.52)*.16, nod=S(t*.28)*.04;
+  const h=S(t*.52)*.18, nod=S(t*.28)*.04;
   return {
     spine:[0.012,S(t*.52)*.025,0], chest:[0.006,S(t*.52)*.012,0],
-    neck:[0.010+nod,h*.28,0],
-    head:[S(t*.38)*.022+nod, h, S(t*.45)*.010],
-    leftUpperArm:arm('L',0,0,0.06), rightUpperArm:arm('R',0,0,0.06),
-    leftLowerArm:fore('L',0.10), rightLowerArm:fore('R',0.10),
-    leftHand:[0,0,-0.03], rightHand:[0,0,0.03],
+    neck:[0.010+nod,h*.30,N(t,0.70,0.006)],
+    head:[S(t*.38)*.024+nod, h, S(t*.45)*.010+N(t,0.82,0.005)],
+    leftUpperArm:  arm('L',N(t,0.88,0.014)+0.010,0,0.06),
+    rightUpperArm: arm('R',N(t,0.95,0.014)+0.010,0,0.06),
+    leftLowerArm:  [0.10+N(t,1.05,0.012),0,0.04], rightLowerArm:[0.10+N(t,0.98,0.012),0,-0.04],
+    leftHand:[N(t,1.3,0.010),0,-0.03], rightHand:[N(t,1.2,0.010),0,0.03],
     ...fingers('L','rest'), ...fingers('R','rest'),
   };
 }
 
 // ── IDLE 4: Hip weight shift ──
 function idle_hipShift(t){
-  const sw=S(t*.95)*.022;
+  const sw=S(t*.95)*.022, lag=S(t*.95-0.40)*.018;
   return {
-    hips:[0,sw*.50,0], spine:[0.012,-sw*.34,sw*.48],
-    chest:[0.006,-sw*.18,sw*.26], neck:[0.010,0,0],
-    head:[S(t*.60)*.010,-sw*.18,0],
-    leftUpperArm:arm('L',0,0,0.06), rightUpperArm:arm('R',0,0,0.06),
-    leftLowerArm:fore('L',0.10), rightLowerArm:fore('R',0.10),
-    leftHand:[0,0,-0.03], rightHand:[0,0,0.03],
+    hips:[0,sw*.52,0], spine:[0.012,-sw*.36,sw*.50], chest:[0.006,-sw*.18,sw*.28],
+    neck:[0.010,0,0], head:[S(t*.60)*.010,-sw*.20,N(t,0.72,0.007)],
+    leftUpperArm:  arm('L',lag+0.010+N(t,0.66,0.008),0,0.06),
+    rightUpperArm: arm('R',lag+0.010+N(t,0.70,0.008),0,0.06),
+    leftLowerArm:  [0.10+N(t,1.05,0.011),0,0.04], rightLowerArm:[0.10+N(t,0.98,0.011),0,-0.04],
+    leftHand:[N(t,1.4,0.010),0,-0.03], rightHand:[N(t,1.35,0.010),0,0.03],
     ...fingers('L','rest'), ...fingers('R','rest'),
   };
 }
@@ -892,11 +927,14 @@ function idle_hipShift(t){
 function idle_clasped(t){
   const b=breathe(t,.010), rock=S(t*.60)*.008;
   return {
-    spine:[0.012+b,rock,0], chest:[0.006+b*.5,rock*.5,0],
-    neck:[0.010,0,0], head:[S(t*.42)*.010, S(t*.32)*.012, S(t*.55)*.007],
-    leftUpperArm:arm('L',0.20,0,0.08), rightUpperArm:arm('R',0.20,0,0.08),
-    leftLowerArm:[0.55,0,0.04], rightLowerArm:[0.55,0,-0.04],
-    leftHand:[0,0,0.08], rightHand:[0,0,-0.08],
+    spine:[0.012+b,rock,N(t,0.55,0.005)], chest:[0.006+b*.5,rock*.5,0],
+    neck:[0.010,N(t,0.44,0.008),N(t,0.60,0.005)],
+    head:[S(t*.42)*.010, S(t*.32)*.014, S(t*.55)*.007],
+    leftUpperArm:  arm('L',0.20+N(t,0.88,0.010),N(t,0.66,0.006),0.08),
+    rightUpperArm: arm('R',0.20+N(t,0.91,0.010),N(t,0.70,0.006),0.08),
+    leftLowerArm:  [0.55+N(t,1.1,0.010),0,0.04], rightLowerArm:[0.55+N(t,1.0,0.010),0,-0.04],
+    leftHand:[N(t,1.4,0.012),0, 0.08+N(t,1.8,0.007)],
+    rightHand:[N(t,1.3,0.012),0,-0.08-N(t,1.7,0.007)],
     ...fingers('L','loose'), ...fingers('R','loose'),
   };
 }
@@ -904,45 +942,51 @@ function idle_clasped(t){
 // ── IDLE 6: Dreamy slow sway ──
 function idle_dreamy(t){
   const s1=S(t*.55)*.018, s2=S(t*.38)*.012;
+  const d1=S(t*.55-0.5)*.026+N(t,0.83,0.010);
+  const d2=S(t*.55+0.3)*.026+N(t,0.91,0.010);
   return {
-    hips:[0,s1*.30,0], spine:[0.012+s2,s1*(-.20),s1*.38],
-    chest:[0.006,s1*(-.10),s1*.20], neck:[0.010,0,0],
-    head:[S(t*.44)*.012, s1*.22+S(t*.29)*.010, s2*.15],
-    leftUpperArm:arm('L',S(t*.55)*.028,0,0.06), rightUpperArm:arm('R',S(t*.55+0.7)*.028,0,0.06),
-    leftLowerArm:fore('L',0.10+S(t*.55)*.020), rightLowerArm:fore('R',0.10+S(t*.55+0.7)*.020),
-    leftHand:[S(t*.9)*.010,0,-0.03], rightHand:[S(t*.9+0.4)*.010,0,0.03],
+    hips:[0,s1*.32,0], spine:[0.012+s2,s1*(-.22),s1*.40], chest:[0.006,s1*(-.11),s1*.22],
+    neck:[0.010,0,0], head:[S(t*.44)*.012, s1*.24+S(t*.29)*.010, s2*.16+N(t,0.70,0.006)],
+    leftUpperArm:  arm('L',d1,0,0.06), rightUpperArm:arm('R',d2,0,0.06),
+    leftLowerArm:  [0.10+S(t*.55)*.022+N(t,1.05,0.008),0,0.04],
+    rightLowerArm: [0.10+S(t*.55+0.7)*.022+N(t,0.98,0.008),0,-0.04],
+    leftHand:[S(t*.9)*.012+N(t,1.4,0.008),N(t,1.8,0.007),-0.03],
+    rightHand:[S(t*.9+0.4)*.012+N(t,1.35,0.008),N(t,1.7,0.007),0.03],
     ...fingers('L','wave'), ...fingers('R','wave'),
   };
 }
 
 // ── IDLE 7: Small bounce ──
 function idle_bounce(t){
-  const b=A(S(t*1.8))*.014, breathAmt=breathe(t,.009);
+  const b=A(S(t*1.8))*.012, bA=breathe(t,.009);
   return {
-    hips:[0,0,0], spine:[0.012+breathAmt+b*.3,0,0],
-    neck:[0.010,0,0], head:[S(t*.46)*.009,S(t*.34)*.011,-b*.08],
-    leftUpperArm:arm('L',b*.12,0,0.06), rightUpperArm:arm('R',b*.12,0,0.06),
-    leftLowerArm:fore('L',0.10), rightLowerArm:fore('R',0.10),
-    leftHand:[0,0,-0.03], rightHand:[0,0,0.03],
-    vrm_bodyY: b*.006,
+    hips:[0,0,0], spine:[0.012+bA+b*.3,N(t,0.55,0.005),0],
+    neck:[0.010,0,0], head:[S(t*.46)*.009,S(t*.34)*.012,-b*.06+N(t,0.80,0.005)],
+    leftUpperArm:  arm('L',b*.14+N(t,0.88,0.010),N(t,0.66,0.007),0.06),
+    rightUpperArm: arm('R',b*.14+N(t,0.95,0.010),N(t,0.72,0.007),0.06),
+    leftLowerArm:  [0.10+N(t,1.05,0.011),0,0.04], rightLowerArm:[0.10+N(t,0.98,0.011),0,-0.04],
+    leftHand:[N(t,1.4,0.010),0,-0.03], rightHand:[N(t,1.35,0.010),0,0.03],
+    vrm_bodyY:b*.007,
     ...fingers('L','rest'), ...fingers('R','rest'),
   };
 }
 
-// ── IDLE 8: Tapping chin / thinking idly ──
+// ── IDLE 8: Pondering — right hand near chin, organic tap ──
 function idle_ponder(t){
-  const tap=A(S(t*1.8))*S(t*1.8)*.030;
+  const tap=A(S(t*1.8))*S(t*1.8)*.028+N(t,0.66,0.008);
   return {
-    spine:[0.015+S(t*.6)*.006,0,0], neck:[0.012,0,0],
-    head:[0.018+S(t*.5)*.012, S(t*.35)*.015, S(t*.70)*.008],
-    rightUpperArm:arm('R',0.72,0,0.06),
-    rightLowerArm:[0.42,0,-0.03+tap],
-    rightHand:[0.05+tap,0.03,0.04],
-    leftUpperArm:arm('L',0,0,0.06), leftLowerArm:fore('L',0.10),
-    leftHand:[0,0,-0.03],
-    ...fingers('R','think'), ...fingers('L','rest'),
+    spine:[0.015+S(t*.6)*.006,N(t,0.44,0.005),0], neck:[0.012,N(t,0.50,0.007),N(t,0.66,0.004)],
+    head:[0.018+S(t*.5)*.012+N(t,0.72,0.006), S(t*.35)*.016, S(t*.70)*.008],
+    rightUpperArm: arm('R',0.72,0,0.06),
+    rightLowerArm: [0.42,0,-0.03+tap],
+    rightHand:     [0.05+tap,0.03,0.04+N(t,1.4,0.008)],
+    leftUpperArm:  arm('L',0.30+N(t,0.88,0.010),0,0.06),
+    leftLowerArm:  [0.38+N(t,1.05,0.010),0,0.04],
+    leftHand:      [N(t,1.3,0.008),0,-0.02],
+    ...fingers('R','fist'), ...fingers('L','rest'),
   };
 }
+
 
 const IDLES=[
   {name:'Relaxed',    fn:idle_natural},
@@ -2025,12 +2069,33 @@ function bootLoop(){
     /* ── Body Y bob ── */
     vrm.scene.position.y=lerp(vrm.scene.position.y??0, bodyY, dt*8);
 
-    /* ── Mouth ── */
-    const mTgt=isTalking?clamp(0.25+S(now*14)*.22+S(now*23)*.09,0,1):0;
-    mouthV=lerp(mouthV,mTgt,dt*20);
-    setExpr('aa',mouthV);
-    setExpr('oh',mouthV*.28);
-    setExpr('ih',mouthV*.14);
+    /* ── Lip sync — phoneme-simulated mouth shapes ── */
+    if(isTalking){
+      // Layer multiple frequencies to simulate real speech rhythm
+      // Fast layer = consonants/syllables, slow layer = vowel holds
+      const syllable = S(now*11.0)*0.22 + S(now*7.3)*0.15 + S(now*14.6)*0.08;
+      const vowelHold = S(now*3.2)*0.18 + S(now*1.8)*0.12;
+      const base = 0.18;
+      const raw = base + syllable + vowelHold;
+      const mTgt = clamp(raw, 0, 1);
+      mouthV = lerp(mouthV, mTgt, dt*28); // fast response = snappy lips
+      // Different mouth shapes for different vowel sounds
+      const aa = clamp(mouthV, 0, 1);               // wide open
+      const oh = clamp(mouthV*0.45+S(now*5.1)*0.12*mouthV, 0, 1); // rounded
+      const ih = clamp(S(now*8.7)*0.18*mouthV, 0, 1);              // narrow
+      const ee = clamp(S(now*6.3)*0.14*mouthV, 0, 1);              // smile-open
+      setExpr('aa', aa);
+      setExpr('oh', oh);
+      setExpr('ih', ih);
+      setExpr('ee', ee);
+    } else {
+      // Smooth close — not instant snap shut
+      mouthV = lerp(mouthV, 0, dt*14);
+      setExpr('aa', mouthV);
+      setExpr('oh', mouthV*0.3);
+      setExpr('ih', 0);
+      setExpr('ee', 0);
+    }
 
     /* ── Blink ── */
     blinkT-=dt;
