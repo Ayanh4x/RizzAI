@@ -543,9 +543,11 @@ async function speakEL(text, onStart, onEnd){
   const clean=cleanForTTS(text);
   if(!clean){ onEnd?.(); return; }
 
+  // Kill any browser TTS immediately — prevents double voice
+  if('speechSynthesis' in window) window.speechSynthesis.cancel();
+
   setTTSStatus('🎙️ Generating voice…');
   try{
-    // Call our Cloudflare Function which calls ElevenLabs server-side
     const res = await fetch('/api/tts',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
@@ -555,55 +557,91 @@ async function speakEL(text, onStart, onEnd){
     if(!res.ok){
       const err=await res.text().catch(()=>'');
       console.error('TTS error:',res.status,err);
-      throw new Error(`TTS ${res.status}: ${err.slice(0,100)}`);
+      throw new Error(`TTS ${res.status}`);
     }
 
     const blob    = await res.blob();
     const blobUrl = URL.createObjectURL(blob);
     stopAudio();
+
+    // Kill browser TTS again right before playing — belt and suspenders
+    if('speechSynthesis' in window) window.speechSynthesis.cancel();
+
     const audio   = new Audio(blobUrl);
     audio._blob   = blobUrl;
     currentAudio  = audio;
 
-    setTTSStatus('🌸 Speaking…');
-    onStart?.();
-
     audio.onended = ()=>{ URL.revokeObjectURL(blobUrl); currentAudio=null; setTTSStatus(''); onEnd?.(); };
-    audio.onerror = ()=>{ URL.revokeObjectURL(blobUrl); currentAudio=null; setTTSStatus(''); fallbackTTS(clean,onStart,onEnd); };
+    audio.onerror = ()=>{ URL.revokeObjectURL(blobUrl); currentAudio=null; setTTSStatus(''); onEnd?.(); };
 
     const playProm = audio.play();
     if(playProm){
-      playProm.catch(e=>{
-        // Autoplay blocked — queue for next tap
-        setTTSStatus('🔇 Tap anywhere to hear voice');
-        const resume=()=>{ audio.play().catch(()=>{}); document.removeEventListener('click',resume); document.removeEventListener('touchstart',resume); };
+      playProm.then(()=>{
+        // Only call onStart AFTER audio actually starts — not before
+        setTTSStatus('🌸 Speaking…');
+        onStart?.();
+      }).catch(()=>{
+        // Autoplay blocked — wait for tap
+        setTTSStatus('🔇 Tap screen to hear voice');
+        const resume=()=>{
+          if('speechSynthesis' in window) window.speechSynthesis.cancel();
+          audio.play().then(()=>{ setTTSStatus('🌸 Speaking…'); onStart?.(); }).catch(()=>onEnd?.());
+          document.removeEventListener('click',resume);
+          document.removeEventListener('touchstart',resume);
+        };
         document.addEventListener('click',resume,{once:true});
         document.addEventListener('touchstart',resume,{once:true});
       });
+    } else {
+      setTTSStatus('🌸 Speaking…');
+      onStart?.();
     }
 
   }catch(e){
     console.error('speakEL error:',e);
-    setTTSStatus('⚠️ Using browser voice');
-    fallbackTTS(clean,onStart,onEnd);
+    setTTSStatus('');
+    // No fallback TTS — just end cleanly so we don't get double voice
+    onEnd?.();
   }
-}
-
-function fallbackTTS(text,onStart,onEnd){
-  if(!('speechSynthesis' in window)){ onEnd?.(); return; }
-  window.speechSynthesis.cancel();
-  const utt=new SpeechSynthesisUtterance(text);
-  const vs=window.speechSynthesis.getVoices();
-  const v=vs.find(x=>/google uk english female|samantha|karen|zira/i.test(x.name))||vs.find(x=>/female/i.test(x.name))||vs.find(x=>/en/i.test(x.lang));
-  if(v)utt.voice=v;
-  utt.pitch=1.35; utt.rate=1.05; utt.volume=1;
-  utt.onstart=()=>onStart?.(); utt.onend=utt.onerror=()=>onEnd?.();
-  setTimeout(()=>window.speechSynthesis.speak(utt),80);
 }
 
 function setTTSStatus(msg){ document.getElementById('tts-status').textContent=msg; }
 
-/* ══════════════════════════════════════════════════════
+/* ── Voice mic input ── */
+let recog=null;
+(function setupMic(){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){ console.log('No SpeechRecognition'); return; }
+  recog = new SR();
+  recog.lang = 'en-US';
+  recog.interimResults = false;
+  recog.continuous = false;
+  recog.onresult = e=>{
+    const t = e.results[0][0].transcript;
+    inputEl.value = t;
+    sendMsg(t);
+  };
+  recog.onend  = ()=>micBtn.classList.remove('rec');
+  recog.onerror= ()=>micBtn.classList.remove('rec');
+})();
+
+micBtn.addEventListener('click',()=>{
+  if(!recog){
+    addMsg('ai','Mic not supported in this browser~');
+    return;
+  }
+  if(micBtn.classList.contains('rec')){
+    recog.stop();
+  } else {
+    // Stop audio so mic can hear clearly
+    stopAudio();
+    isTalking = false;
+    document.getElementById('wave').classList.remove('on');
+    micBtn.classList.add('rec');
+    try{ recog.start(); }
+    catch(e){ micBtn.classList.remove('rec'); console.warn('recog.start failed:',e); }
+  }
+});/* ══════════════════════════════════════════════════════
    PETALS
 ══════════════════════════════════════════════════════ */
 const petalColors=['#f9a8d4','#f0abfc','#e879a0','#fda4af','#c4b5fd','#fbcfe8'];
@@ -1369,27 +1407,7 @@ document.getElementById('btn-reset').addEventListener('click',()=>{
 document.querySelectorAll('.qbtn').forEach(b=>b.addEventListener('click',()=>sendMsg(b.dataset.msg)));
 
 /* ── Voice input ── */
-let recog=null;
-if('SpeechRecognition' in window||'webkitSpeechRecognition' in window){
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  recog=new SR(); recog.lang='en-US'; recog.interimResults=false;
-  recog.onresult=e=>{ const t=e.results[0][0].transcript; inputEl.value=t; sendMsg(t); };
-  recog.onend=recog.onerror=()=>micBtn.classList.remove('rec');
-}
-micBtn.addEventListener('click',()=>{
-  if(!recog){addMsg('ai','Speech recognition not supported here~');return;}
-  if(micBtn.classList.contains('rec')){recog.stop();}
-  else{
-    // Stop any playing audio first
-    stopAudio(); isTalking=false;
-    document.getElementById('wave').classList.remove('on');
-    micBtn.classList.add('rec');
-    recog.start();
-  }
-});
 
-// Unlock AudioContext on first user interaction
-// Audio unlocks automatically via user gesture on the send/mic buttons
 </script>
 </body>
 </html>
