@@ -1,0 +1,2876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0"/>
+<title>RizzAI ✨</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+/* ════════════════════════════════════════════════════
+   RESET + VARIABLES
+════════════════════════════════════════════════════ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg0:#0d0618;
+  --bg1:#130a22;
+  --bg2:#1c1030;
+  --p1:#e879a0;   /* rose */
+  --p2:#a855f7;   /* violet */
+  --p3:#f0abfc;   /* soft orchid */
+  --p4:#fda4af;   /* petal pink */
+  --glass:rgba(255,240,255,0.07);
+  --glassbrd:rgba(240,171,252,0.18);
+  --glasshov:rgba(255,240,255,0.12);
+  --txt:#f5e6ff;
+  --txt2:#c4a8dd;
+  --txt3:#8b6aaa;
+  --radius:20px;
+  --font:'Nunito',sans-serif;
+  --fontb:'Quicksand',sans-serif;
+  --shadow:0 8px 32px rgba(168,85,247,0.25);
+}
+html,body{
+  width:100%;height:100%;overflow:hidden;
+  background:var(--bg0);
+  font-family:var(--font);
+  color:var(--txt);
+  -webkit-tap-highlight-color:transparent;
+}
+
+/* ════════════════════════════════════════════════════
+   ANIMATED BACKGROUND
+════════════════════════════════════════════════════ */
+#bg{position:fixed;inset:0;z-index:0;overflow:hidden}
+#bg::before{
+  content:'';position:absolute;inset:0;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 20%,#7c3aed18,transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 80%,#e879a018,transparent 55%),
+    radial-gradient(ellipse 50% 40% at 50% 50%,#a855f710,transparent 50%),
+    linear-gradient(135deg,#0d0618,#130a22 40%,#0d0618);
+  animation:bgshift 12s ease-in-out infinite alternate;
+}
+@keyframes bgshift{
+  0%{filter:hue-rotate(0deg)}
+  100%{filter:hue-rotate(15deg)}
+}
+#bg::after{
+  content:'';position:absolute;inset:0;
+  background-image:
+    radial-gradient(circle 1px at 50% 50%,rgba(240,171,252,0.15) 0%,transparent 100%);
+  background-size:40px 40px;
+  animation:starmove 20s linear infinite;
+}
+@keyframes starmove{0%{transform:translateY(0)}100%{transform:translateY(-40px)}}
+
+/* petals */
+.petal{
+  position:fixed;pointer-events:none;z-index:1;
+  border-radius:60% 40% 60% 40%;
+  animation:petalfall linear infinite;
+  opacity:0;
+}
+@keyframes petalfall{
+  0%  {transform:translateY(-10px) translateX(0) rotate(0deg);opacity:0}
+  5%  {opacity:.8}
+  95% {opacity:.3}
+  100%{transform:translateY(105vh) translateX(60px) rotate(600deg);opacity:0}
+}
+
+/* ════════════════════════════════════════════════════
+   LAYOUT — desktop: side by side, mobile: stacked
+════════════════════════════════════════════════════ */
+#app{
+  position:relative;z-index:2;
+  width:100%;height:100vh;
+  display:flex;flex-direction:row;
+}
+
+/* ════════════════════════════════════════════════════
+   AVATAR PANEL
+════════════════════════════════════════════════════ */
+#avatar-panel{
+  flex:1;position:relative;overflow:hidden;
+  min-width:0;
+}
+#avatar-panel canvas{
+  width:100%!important;height:100%!important;display:block;
+}
+
+/* top left — emotion */
+#etag{
+  position:absolute;top:16px;left:16px;
+  background:var(--glass);backdrop-filter:blur(16px);
+  border:1px solid var(--glassbrd);border-radius:40px;
+  padding:6px 16px;font-size:11px;font-weight:700;
+  color:var(--p3);letter-spacing:1.5px;text-transform:uppercase;
+  opacity:0;transition:opacity .4s;pointer-events:none;
+  font-family:var(--fontb);
+}
+#etag.on{opacity:1}
+
+/* top right — speaking bars */
+#wave{
+  position:absolute;top:16px;right:16px;
+  display:flex;align-items:center;gap:3px;
+  opacity:0;transition:opacity .3s;
+}
+#wave.on{opacity:1}
+.wb{
+  width:3px;border-radius:3px;
+  background:linear-gradient(180deg,var(--p2),var(--p1));
+  animation:wb .65s ease-in-out infinite alternate;
+}
+.wb:nth-child(1){height:5px;animation-delay:0s}
+.wb:nth-child(2){height:13px;animation-delay:.09s}
+.wb:nth-child(3){height:20px;animation-delay:.18s}
+.wb:nth-child(4){height:14px;animation-delay:.12s}
+.wb:nth-child(5){height:6px;animation-delay:.05s}
+@keyframes wb{to{height:3px}}
+
+/* bottom — name badge */
+#badge{
+  position:absolute;bottom:20px;left:50%;transform:translateX(-50%);
+  background:var(--glass);backdrop-filter:blur(20px);
+  border:1px solid var(--glassbrd);border-radius:40px;
+  padding:8px 24px;display:flex;align-items:center;gap:10px;
+  box-shadow:var(--shadow);white-space:nowrap;
+}
+#badge .dot{
+  width:8px;height:8px;border-radius:50%;
+  background:var(--p1);
+  box-shadow:0 0 8px var(--p1);
+  animation:dotpulse 2s ease-in-out infinite;
+}
+@keyframes dotpulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.6);opacity:.5}}
+#badge span{font-size:12px;font-weight:800;letter-spacing:3px;color:var(--txt);font-family:var(--fontb)}
+
+/* anim label */
+#alabel{
+  position:absolute;bottom:64px;left:50%;transform:translateX(-50%);
+  background:rgba(168,85,247,.15);backdrop-filter:blur(8px);
+  border:1px solid rgba(168,85,247,.22);border-radius:20px;
+  padding:4px 14px;font-size:10px;color:var(--p3);letter-spacing:1px;
+  opacity:0;transition:opacity .4s;white-space:nowrap;pointer-events:none;
+  font-family:var(--fontb);
+}
+#alabel.on{opacity:1}
+
+/* ════════════════════════════════════════════════════
+   CHAT PANEL
+════════════════════════════════════════════════════ */
+#chat-panel{
+  width:420px;flex-shrink:0;
+  display:flex;flex-direction:column;
+  background:rgba(13,6,24,0.85);
+  backdrop-filter:blur(30px);
+  border-left:1px solid var(--glassbrd);
+  position:relative;
+}
+
+/* header */
+#chat-header{
+  padding:18px 20px 14px;
+  background:linear-gradient(135deg,rgba(168,85,247,.10),rgba(232,121,160,.07));
+  border-bottom:1px solid var(--glassbrd);
+  display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;
+}
+.header-info h1{
+  font-size:18px;font-weight:800;
+  background:linear-gradient(120deg,var(--p3),var(--p1));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  font-family:var(--fontb);
+}
+.header-info p{font-size:11px;color:var(--txt3);margin-top:2px}
+
+/* status indicator */
+.status-dot{
+  display:flex;align-items:center;gap:6px;
+  font-size:11px;color:var(--txt3);
+}
+.status-dot::before{
+  content:'';width:7px;height:7px;border-radius:50%;
+  background:#4ade80;box-shadow:0 0 6px #4ade80;
+  animation:dotpulse 2.5s ease-in-out infinite;
+}
+
+#btn-reset{
+  background:var(--glass);border:1px solid var(--glassbrd);border-radius:10px;
+  color:var(--txt3);font-size:11px;padding:5px 12px;cursor:pointer;
+  transition:all .2s;font-family:var(--font);font-weight:600;
+}
+#btn-reset:hover{border-color:var(--p1);color:var(--p1);background:var(--glasshov)}
+
+/* messages */
+#msgs{
+  flex:1;overflow-y:auto;
+  padding:16px 14px;
+  display:flex;flex-direction:column;gap:10px;
+  scroll-behavior:smooth;
+}
+#msgs::-webkit-scrollbar{width:3px}
+#msgs::-webkit-scrollbar-track{background:transparent}
+#msgs::-webkit-scrollbar-thumb{background:rgba(168,85,247,.25);border-radius:3px}
+
+.msg{
+  max-width:84%;display:flex;flex-direction:column;
+  animation:msgpop .3s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes msgpop{
+  from{opacity:0;transform:translateY(8px) scale(.97)}
+  to{opacity:1;transform:none}
+}
+.msg.user{align-self:flex-end;align-items:flex-end}
+.msg.ai{align-self:flex-start;align-items:flex-start}
+
+.bubble{
+  padding:10px 14px;border-radius:18px;
+  font-size:13.5px;line-height:1.65;word-break:break-word;
+  font-family:var(--fontb);font-weight:500;
+}
+.msg.user .bubble{
+  background:linear-gradient(135deg,var(--p2),var(--p1));
+  color:#fff;border-bottom-right-radius:5px;
+  box-shadow:0 4px 18px rgba(168,85,247,.35);
+}
+.msg.ai .bubble{
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(240,171,252,.12);
+  color:var(--txt);border-bottom-left-radius:5px;
+  box-shadow:0 2px 12px rgba(0,0,0,.2);
+}
+.meta{
+  font-size:10px;color:var(--txt3);margin-top:4px;
+  padding:0 4px;font-family:var(--font);
+}
+
+/* typing indicator */
+#typing{
+  display:none;align-self:flex-start;
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(240,171,252,.12);
+  border-radius:18px;border-bottom-left-radius:5px;
+  padding:12px 16px;gap:5px;
+}
+#typing.on{display:flex}
+.td{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--p3);
+  animation:tdb 1.1s ease-in-out infinite;
+}
+.td:nth-child(2){animation-delay:.18s}
+.td:nth-child(3){animation-delay:.36s}
+@keyframes tdb{0%,80%,100%{transform:scale(.55);opacity:.3}40%{transform:scale(1);opacity:1}}
+
+/* quick buttons */
+#qrow{
+  display:flex;gap:6px;flex-wrap:wrap;
+  padding:10px 14px 0;flex-shrink:0;
+}
+.qbtn{
+  background:var(--glass);border:1px solid var(--glassbrd);
+  border-radius:20px;padding:5px 12px;
+  font-size:11px;color:var(--txt2);
+  cursor:pointer;font-family:var(--fontb);font-weight:600;
+  transition:all .2s;white-space:nowrap;
+}
+.qbtn:hover,.qbtn:active{
+  border-color:var(--p1);color:var(--p1);
+  background:var(--glasshov);
+}
+
+/* input area */
+#input-area{
+  padding:12px 14px 16px;
+  border-top:1px solid var(--glassbrd);
+  flex-shrink:0;
+  safe-area-inset-bottom:env(safe-area-inset-bottom);
+}
+#irow{display:flex;gap:8px;align-items:flex-end;margin-top:10px}
+#uinput{
+  flex:1;
+  background:rgba(255,255,255,.06);
+  border:1.5px solid var(--glassbrd);
+  border-radius:14px;
+  padding:10px 14px;
+  font-family:var(--fontb);font-size:14px;font-weight:500;
+  color:var(--txt);outline:none;resize:none;
+  max-height:100px;min-height:44px;line-height:1.5;
+  transition:border-color .2s,background .2s;
+  -webkit-appearance:none;
+}
+#uinput:focus{border-color:var(--p2);background:rgba(255,255,255,.09)}
+#uinput::placeholder{color:var(--txt3)}
+.ibtn{
+  width:44px;height:44px;border-radius:13px;border:none;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;font-size:18px;flex-shrink:0;
+  transition:transform .15s,opacity .2s;
+  -webkit-tap-highlight-color:transparent;
+}
+.ibtn:active{transform:scale(.88)}
+#btn-send{
+  background:linear-gradient(135deg,var(--p2),var(--p1));
+  color:#fff;box-shadow:0 4px 16px rgba(168,85,247,.45);
+}
+#btn-send:disabled{opacity:.3;cursor:not-allowed}
+#btn-mic{
+  background:var(--glass);border:1.5px solid var(--glassbrd);color:var(--txt2);
+}
+#btn-mic.rec{
+  background:var(--p1);color:#fff;border-color:var(--p1);
+  animation:micrec .7s ease-in-out infinite alternate;
+}
+@keyframes micrec{to{box-shadow:0 0 0 10px rgba(232,121,160,0)}}
+
+/* tts status badge */
+#tts-status{
+  font-size:10px;color:var(--txt3);text-align:center;
+  margin-top:4px;font-family:var(--fontb);min-height:14px;
+}
+
+/* ════════════════════════════════════════════════════
+   LOADING SCREEN
+════════════════════════════════════════════════════ */
+#loading{
+  position:fixed;inset:0;z-index:300;
+  background:var(--bg0);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;
+  transition:opacity .8s;
+}
+#loading.hide{opacity:0;pointer-events:none}
+.load-rings{position:relative;width:70px;height:70px}
+.load-ring{
+  position:absolute;inset:0;border-radius:50%;border:2.5px solid transparent;
+  animation:spin 1s linear infinite;
+}
+.load-ring:nth-child(1){border-top-color:var(--p2);animation-duration:.9s}
+.load-ring:nth-child(2){border-right-color:var(--p1);animation-duration:1.3s;inset:8px}
+.load-ring:nth-child(3){border-bottom-color:var(--p3);animation-duration:1.7s;inset:16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loading p{
+  color:var(--p3);font-size:13px;letter-spacing:2px;
+  font-family:var(--fontb);font-weight:600;
+}
+
+/* ════════════════════════════════════════════════════
+   TOAST
+════════════════════════════════════════════════════ */
+#toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  background:rgba(255,60,100,.9);color:#fff;
+  padding:10px 20px;border-radius:12px;font-size:12px;
+  z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;
+  font-family:var(--fontb);font-weight:600;white-space:nowrap;
+}
+#toast.on{opacity:1}
+
+/* ════════════════════════════════════════════════════
+   MOBILE RESPONSIVE
+════════════════════════════════════════════════════ */
+@media(max-width:700px){
+  #app{flex-direction:column}
+  #avatar-panel{height:46vh;flex:none}
+  #chat-panel{
+    width:100%;flex:1;
+    border-left:none;
+    border-top:1px solid var(--glassbrd);
+  }
+  .bubble{font-size:13px}
+  #chat-header{padding:12px 14px 10px}
+  .header-info h1{font-size:16px}
+  #qrow{padding:8px 10px 0}
+  .qbtn{font-size:10px;padding:4px 10px}
+  #input-area{padding:8px 10px 12px}
+  #irow{margin-top:8px}
+  #uinput{min-height:40px;font-size:13px}
+  .ibtn{width:40px;height:40px}
+  #msgs{padding:12px 10px}
+}
+
+@media(max-width:380px){
+  #qrow{gap:4px}
+  .qbtn{font-size:9.5px;padding:3px 8px}
+}
+</style>
+</head>
+<body>
+<div id="bg"></div>
+<div id="loading">
+  <div class="load-rings">
+    <div class="load-ring"></div>
+    <div class="load-ring"></div>
+    <div class="load-ring"></div>
+  </div>
+  <p id="lpct">Loading RizzAI…</p>
+</div>
+<div id="toast"></div>
+
+<div id="app">
+  <!-- AVATAR -->
+  <div id="avatar-panel">
+    <div id="etag">✨ ready</div>
+    <div id="wave">
+      <div class="wb"></div><div class="wb"></div><div class="wb"></div>
+      <div class="wb"></div><div class="wb"></div>
+    </div>
+    <div id="alabel">idle</div>
+    <div id="badge"><div class="dot"></div><span>RIZZAI</span></div>
+  </div>
+
+  <!-- CHAT -->
+  <div id="chat-panel">
+    <div id="chat-header">
+      <div class="header-info">
+        <h1>✨ RizzAI</h1>
+        <p>Your anime companion</p>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="status-dot">Online</div>
+        <button id="btn-reset">New Chat</button>
+      </div>
+    </div>
+
+    <div id="msgs">
+      <div class="msg ai">
+        <div class="bubble">Yatta, you're finally here~! I'm RizzAI, your anime companion. Ask me anything or just chat! ✿</div>
+        <div class="meta">RizzAI · just now</div>
+      </div>
+      <div id="typing"><div class="td"></div><div class="td"></div><div class="td"></div></div>
+    </div>
+
+    <div id="qrow">
+      <button class="qbtn" data-msg="Hello RizzAI! How are you?">👋 Hello</button>
+      <button class="qbtn" data-msg="Dance for me!">💃 Dance</button>
+      <button class="qbtn" data-msg="Spin around!">💫 Spin</button>
+      <button class="qbtn" data-msg="Jump!">⬆️ Jump</button>
+      <button class="qbtn" data-msg="Clap for me!">👏 Clap</button>
+      <button class="qbtn" data-msg="Tell me a cute anime story!">📖 Story</button>
+      <button class="qbtn" data-msg="Make me smile please!">😊 Cheer up</button>
+      <button class="qbtn" data-msg="Do something happy!">⭐ Happy</button>
+    </div>
+
+    <div id="input-area">
+      <div id="irow">
+        <textarea id="uinput" rows="1" placeholder="Chat or say: dance / spin / jump / wave / clap…"></textarea>
+        <button class="ibtn" id="btn-mic">🎤</button>
+        <button class="ibtn" id="btn-send">➤</button>
+      </div>
+      <div id="tts-status"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     IMPORT MAP
+══════════════════════════════════════════════ -->
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.163.0/examples/jsm/","@pixiv/three-vrm":"https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@2.1.2/lib/three-vrm.module.js"}}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
+
+/* ══════════════════════════════════════════════════════
+   KEYS & ENDPOINTS
+══════════════════════════════════════════════════════ */
+// NVIDIA NIM — OpenAI-compatible endpoint
+/* ElevenLabs — called directly (has CORS enabled) */
+const EL_KEY   = 'sk_250212ffaad2004dbf6f427367e450fea3be5d2dedc8d3d1';
+const EL_VOICE = '1zUSi8LeHs9M2mV8X6YS';
+const EL_URL   = `https://api.elevenlabs.io/v1/text-to-speech/${EL_VOICE}/stream`;
+
+let history = [];
+
+/* ══════════════════════════════════════════════════════
+   AI CHAT — calls /api/chat (Cloudflare Function)
+   The function proxies to NVIDIA NIM server-side,
+   bypassing the CORS block that breaks browser fetch.
+══════════════════════════════════════════════════════ */
+async function callAI(msg){
+  history.push({role:'user', content:msg});
+
+  let res;
+  try{
+    res = await fetch('/api/chat', {
+      method:  'POST',
+      headers: {'Content-Type':'application/json'},
+      body:    JSON.stringify({
+        message: msg,
+        history: history.slice(-40),
+      }),
+    });
+  }catch(netErr){
+    history.pop(); // remove failed message
+    throw new Error('Cannot reach /api/chat: '+netErr.message);
+  }
+
+  if(!res.ok){
+    const errText = await res.text().catch(()=>'(no body)');
+    history.pop();
+    throw new Error(`API error ${res.status}: ${errText.slice(0,200)}`);
+  }
+
+  const d     = await res.json();
+  if(d.error){ history.pop(); throw new Error(d.error); }
+
+  const reply = d.reply ?? '';
+  const emo   = d.emo   ?? 'happy';
+
+  history.push({role:'assistant', content:reply});
+  return {reply, emo};
+}
+
+/* ══════════════════════════════════════════════════════
+   ELEVENLABS TTS
+   Fix: use Blob URL + <audio> element instead of
+   WebAudio decodeAudioData — works on all browsers
+   including mobile Safari which rejects mp3 decode.
+══════════════════════════════════════════════════════ */
+let currentAudio = null;
+
+function stopAudio(){
+  if(currentAudio){
+    currentAudio.pause();
+    currentAudio.src = '';
+    try{ URL.revokeObjectURL(currentAudio._blobUrl); }catch(_){}
+    currentAudio = null;
+  }
+}
+
+function cleanForTTS(text){
+  return text
+    .replace(/[\u{1F000}-\u{1FFFF}]/gu,'')
+    .replace(/[\u2600-\u27BF]/g,'')
+    .replace(/[*_~`>#\[\]]/g,'')
+    .replace(/[^\w\s',.!?;:\-]/g,' ')
+    .replace(/\s+/g,' ').trim();
+}
+
+async function speakEL(text, onStart, onEnd){
+  const clean = cleanForTTS(text);
+  if(!clean){ onEnd?.(); return; }
+
+  setTTSStatus('🎙️ Generating voice…');
+  try{
+    const res = await fetch(EL_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'xi-api-key':    EL_KEY,
+        'Accept':        'audio/mpeg',
+      },
+      body: JSON.stringify({
+        text:     clean,
+        model_id: 'eleven_turbo_v2_5',   // latest + fastest model
+        output_format: 'mp3_44100_128',
+        voice_settings: {
+          stability:        0.42,
+          similarity_boost: 0.80,
+          style:            0.30,
+          use_speaker_boost: true,
+        },
+      }),
+    });
+
+    if(!res.ok){
+      const errBody = await res.text();
+      console.error('ElevenLabs response:', res.status, errBody);
+      throw new Error(`ElevenLabs ${res.status}`);
+    }
+
+    // Get audio as blob and create object URL — works everywhere
+    const blob    = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+
+    stopAudio();
+
+    const audio      = new Audio(blobUrl);
+    audio._blobUrl   = blobUrl;
+    currentAudio     = audio;
+
+    setTTSStatus('🌸 Speaking…');
+    onStart?.();
+
+    audio.onended = ()=>{
+      URL.revokeObjectURL(blobUrl);
+      currentAudio = null;
+      setTTSStatus('');
+      onEnd?.();
+    };
+    audio.onerror = (e)=>{
+      console.error('Audio play error:', e);
+      URL.revokeObjectURL(blobUrl);
+      currentAudio = null;
+      setTTSStatus('⚠️ Playback error — using fallback');
+      fallbackTTS(clean, onStart, onEnd);
+    };
+
+    // play() returns a promise — must catch rejection (autoplay policy)
+    audio.play().catch(e=>{
+      console.warn('Autoplay blocked:', e);
+      setTTSStatus('⚠️ Tap screen to enable voice');
+      // Try again on next user gesture
+      const resume = ()=>{
+        audio.play().catch(()=>{});
+        document.removeEventListener('click', resume);
+        document.removeEventListener('touchstart', resume);
+      };
+      document.addEventListener('click', resume, {once:true});
+      document.addEventListener('touchstart', resume, {once:true});
+    });
+
+  }catch(e){
+    console.error('ElevenLabs error:', e);
+    setTTSStatus('⚠️ Using browser voice');
+    fallbackTTS(clean, onStart, onEnd);
+  }
+}
+
+function fallbackTTS(text, onStart, onEnd){
+  if(!('speechSynthesis' in window)){ onEnd?.(); return; }
+  window.speechSynthesis.cancel();
+  const utt = new SpeechSynthesisUtterance(text);
+  const vs  = window.speechSynthesis.getVoices();
+  const v   = vs.find(x=>/google uk english female|samantha|karen|zira/i.test(x.name))
+           || vs.find(x=>/female/i.test(x.name))
+           || vs.find(x=>/en/i.test(x.lang));
+  if(v) utt.voice = v;
+  utt.pitch = 1.35; utt.rate = 1.05; utt.volume = 1;
+  utt.onstart  = ()=> onStart?.();
+  utt.onend    = ()=> onEnd?.();
+  utt.onerror  = ()=> onEnd?.();
+  setTimeout(()=> window.speechSynthesis.speak(utt), 80);
+}
+
+function setTTSStatus(msg){ document.getElementById('tts-status').textContent=msg; }
+
+/* ══════════════════════════════════════════════════════
+   PETALS
+══════════════════════════════════════════════════════ */
+const petalColors=['#f9a8d4','#f0abfc','#e879a0','#fda4af','#c4b5fd','#fbcfe8'];
+for(let i=0;i<28;i++){
+  const p=document.createElement('div'); p.className='petal';
+  const s=4+Math.random()*10;
+  p.style.cssText=`
+    left:${Math.random()*100}%;
+    width:${s}px;height:${s*0.7}px;
+    background:${petalColors[Math.floor(Math.random()*petalColors.length)]};
+    opacity:0;
+    animation-duration:${8+Math.random()*14}s;
+    animation-delay:${Math.random()*18}s;
+    transform:rotate(${Math.random()*360}deg);
+  `;
+  document.body.appendChild(p);
+}
+
+/* ══════════════════════════════════════════════════════
+   THREE.JS
+══════════════════════════════════════════════════════ */
+const panel = document.getElementById('avatar-panel');
+const W=()=>panel.clientWidth, H=()=>panel.clientHeight;
+const renderer = new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.setSize(W(),H());
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true;
+panel.insertBefore(renderer.domElement, panel.firstChild);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(26,W()/H(),0.1,20);
+camera.position.set(0,0.9,3.0);
+camera.lookAt(0,0.9,0);
+
+// Warm cinematic lighting
+scene.add(new THREE.AmbientLight(0xfff0ff,1.6));
+const key=new THREE.DirectionalLight(0xffd6f0,2.2);key.position.set(1.5,3,2);scene.add(key);
+const fill=new THREE.DirectionalLight(0xc4b5fd,1.0);fill.position.set(-2,1.5,-1);scene.add(fill);
+const rim=new THREE.DirectionalLight(0xfda4af,0.8);rim.position.set(0,4,-3);scene.add(rim);
+const bot=new THREE.DirectionalLight(0xf0abfc,0.3);bot.position.set(0,-2,1);scene.add(bot);
+
+// Subtle floor glow
+const gdisc=new THREE.Mesh(
+  new THREE.CircleGeometry(1.1,64),
+  new THREE.MeshBasicMaterial({color:0xe879a0,transparent:true,opacity:0.07})
+);
+gdisc.rotation.x=-Math.PI/2;gdisc.position.y=-0.01;scene.add(gdisc);
+
+window.addEventListener('resize',()=>{
+  camera.aspect=W()/H();
+  camera.updateProjectionMatrix();
+  renderer.setSize(W(),H());
+});
+
+/* ══════════════════════════════════════════════════════
+   VRM LOAD
+══════════════════════════════════════════════════════ */
+let vrm=null;
+const loader=new GLTFLoader();
+loader.register(p=>new VRMLoaderPlugin(p));
+const overlay=document.getElementById('loading');
+const lpct=document.getElementById('lpct');
+
+loader.load('./avatar.vrm',
+  gltf=>{
+    vrm=gltf.userData.vrm;
+    VRMUtils.removeUnnecessaryJoints(vrm.scene);
+    VRMUtils.rotateVRM0(vrm);
+    scene.add(vrm.scene);
+    overlay.classList.add('hide');
+    setTimeout(()=>overlay.remove(),800);
+    bootLoop();
+  },
+  p=>{ lpct.textContent=`Loading RizzAI… ${Math.round((p.loaded/(p.total||1))*100)}%`; },
+  e=>{ console.warn('VRM:',e); lpct.textContent='Avatar unavailable — chat works!'; overlay.classList.add('hide'); setTimeout(()=>overlay.remove(),1500); bootLoop(); }
+);
+
+/* ══════════════════════════════════════════════════════
+   CORE HELPERS
+══════════════════════════════════════════════════════ */
+const lerp=(a,b,t)=>a+(b-a)*t;
+const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+const S=Math.sin, C=Math.cos, A=Math.abs, PI=Math.PI;
+const boneNode=n=>vrm?.humanoid?.getNormalizedBoneNode(n)??null;
+const setExpr=(n,v)=>{ if(!vrm)return; try{vrm.expressionManager?.setValue(n,clamp(v,0,1));}catch(_){} };
+
+/* ══════════════════════════════════════════════════════
+   POSE SYSTEM — smooth lerp TARGET→LIVE every frame
+══════════════════════════════════════════════════════ */
+const PTGT={}, PLIV={};
+function applyPose(map){
+  for(const[k,v] of Object.entries(map)) PTGT[k]=[v[0],v[1],v[2]];
+}
+function tickBones(dt){
+  const sp=clamp(dt*9,0,1);
+  for(const[n,t] of Object.entries(PTGT)){
+    if(!PLIV[n]) PLIV[n]=[t[0],t[1],t[2]];
+    PLIV[n][0]=lerp(PLIV[n][0],t[0],sp);
+    PLIV[n][1]=lerp(PLIV[n][1],t[1],sp);
+    PLIV[n][2]=lerp(PLIV[n][2],t[2],sp);
+  }
+  for(const[n,r] of Object.entries(PLIV)){
+    const b=boneNode(n); if(!b)continue;
+    b.rotation.x=r[0]; b.rotation.y=r[1]; b.rotation.z=r[2];
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   ARM ROTATION HELPER
+   VRM1 leftUpperArm:  z=0 → T-pose,  z=-PI/2 → arm DOWN
+   VRM1 rightUpperArm: z=0 → T-pose,  z=+PI/2 → arm DOWN
+   raise: 0=fully down, 1=fully up (PI/2 radians)
+   swing: outward swing amount
+   fwd:   forward tilt (natural hang)
+══════════════════════════════════════════════════════ */
+function arm(side,raise=0,swing=0,fwd=0.06){
+  const h=PI/2; // 90° = straight down
+  if(side==='L') return [fwd+raise*0.25, swing*0.3, -(h-raise)];
+  else           return [fwd+raise*0.25,-swing*0.3,  (h-raise)];
+}
+// Bent forearm helper — natural resting bend
+function fore(side,bend=0.10,twist=0){
+  if(side==='L') return [bend,0, twist+0.04];
+  else           return [bend,0,-twist-0.04];
+}
+
+/* ══════════════════════════════════════════════════════
+   FINGER SHAPES (all 20 fingers, 3 joints each)
+══════════════════════════════════════════════════════ */
+function fingers(side,shape){
+  const s=side==='L'?'left':'right', sg=side==='L'?1:-1, p={};
+  const JNTS=['Proximal','Intermediate','Distal'];
+
+  // Thumb presets [metacarpal, proximal, distal]
+  const TH={
+    rest: [[0,0,sg*-0.22],[0,0,sg*-0.08],[0.05,0,0]],
+    open: [[0,0,sg*-0.30],[0,0,sg*-0.10],[0.04,0,0]],
+    curl: [[0.16,0,sg*0.22],[0.24,0,sg*0.14],[0.16,0,0]],
+    wave: [[0,0,sg*-0.32],[0,0,sg*-0.10],[0.04,0,0]],
+    think:[[0,0,sg*-0.18],[0.07,0,sg*-0.06],[0.05,0,0]],
+    pinch:[[0.18,0,sg*-0.08],[0.35,0,sg*0.08],[0.28,0,0]],
+  };
+  const thKey = {rest:'rest',open:'open',loose:'rest',fist:'curl',point:'curl',peace:'curl',wave:'wave',think:'think',ok:'pinch',spread:'open',relax:'rest'}[shape]||'rest';
+  const th=TH[thKey];
+  p[`${s}ThumbMetacarpal`]=th[0]; p[`${s}ThumbProximal`]=th[1]; p[`${s}ThumbDistal`]=th[2];
+
+  const spread={Index:sg*-0.06,Middle:sg*-0.02,Ring:sg*0.02,Little:sg*0.06};
+
+  ['Index','Middle','Ring','Little'].forEach(f=>{
+    let c;
+    const sp=spread[f];
+    if(shape==='open'||shape==='spread')c=[0.04,0.05,0.04];
+    else if(shape==='rest'||shape==='relax')c=[0.12,0.16,0.10];
+    else if(shape==='loose')c=[0.15,0.20,0.12];
+    else if(shape==='fist')c=[1.32,1.32,1.32];
+    else if(shape==='point')c=f==='Index'?[0.03,0.03,0.03]:[1.32,1.32,1.32];
+    else if(shape==='peace')c=(f==='Index'||f==='Middle')?[0.03,0.03,0.03]:[1.32,1.32,1.32];
+    else if(shape==='wave')c=[0.08,0.10,0.07];
+    else if(shape==='think')c=f==='Index'?[0.22,0.22,0.14]:[0.70,0.70,0.70];
+    else if(shape==='ok')c=f==='Index'?[1.05,1.05,1.05]:[0.09,0.11,0.07];
+    else c=[0.12,0.16,0.10]; // default rest
+    JNTS.forEach((j,i)=>{ p[`${s}${f}${j}`]=[c[i],0,i===0?sp:0]; });
+  });
+  return p;
+}
+
+/* ══════════════════════════════════════════════════════
+   ████████████████████████████████████████
+   100+ IDLE & GESTURE ANIMATIONS
+   ████████████████████████████████████████
+
+   IDLE POSES (looping, use absolute time t)
+   Each one has arms DOWN in neutral state.
+══════════════════════════════════════════════════════ */
+
+// Shared breathing
+const breathe=(t,amt=0.012)=>S(t*1.45)*amt;
+
+// ── IDLE 1: Natural relaxed stand ──
+function idle_natural(t){
+  const b=breathe(t);
+  return {
+    hips:[0,0,0], spine:[0.012+b,0,0], chest:[0.006+b*.5,0,0],
+    upperChest:[b*.3,0,0], neck:[0.010,0,0],
+    head:[S(t*.48)*.009, S(t*.35)*.012, S(t*.60)*.006],
+    leftShoulder:[0,0,0.030+b*.2], rightShoulder:[0,0,-0.030-b*.2],
+    leftUpperArm:arm('L',0,0,0.06+b*.12), rightUpperArm:arm('R',0,0,0.06+b*.12),
+    leftLowerArm:fore('L',0.10), rightLowerArm:fore('R',0.10),
+    leftHand:[S(t*.8)*.007,0,-0.03], rightHand:[S(t*.8)*.007,0,0.03],
+    leftUpperLeg:[0.02,0,0.01], rightUpperLeg:[0.02,0,-0.01],
+    ...fingers('L','rest'), ...fingers('R','rest'),
+  };
+}
+
+// ── IDLE 2: Gentle body sway ──
+function idle_sway(t){
+  const sw=S(t*.82)*.016, b=breathe(t,.010);
+  return {
+    hips:[0,sw*.35,0], spine:[0.012+b,-sw*.24,sw*.40],
+    chest:[0.006,-sw*.14,sw*.22], neck:[0.010,0,0],
+    head:[S(t*.52)*.009, S(t*.82)*.020, -sw*.12],
+    leftShoulder:[0,0,0.030+sw*.04], rightShoulder:[0,0,-0.030-sw*.04],
+    leftUpperArm:arm('L',S(t*.82)*.022,0,0.06), rightUpperArm:arm('R',S(t*.82)*.022,0,0.06),
+    leftLowerArm:fore('L',0.10), rightLowerArm:fore('R',0.10),
+    leftHand:[S(t*.82)*.010,0,-0.03], rightHand:[S(t*.82)*.010,0,0.03],
+    ...fingers('L','rest'), ...fingers('R','rest'),
+  };
+}
+
+// ── IDLE 3: Head look around curiously ──
+function idle_curious(t){
+  const h=S(t*.52)*.16, nod=S(t*.28)*.04;
+  return {
+    spine:[0.012,S(t*.52)*.025,0], chest:[0.006,S(t*.52)*.012,0],
+    neck:[0.010+nod,h*.28,0],
+    head:[S(t*.38)*.022+nod, h, S(t*.45)*.010],
+    leftUpperArm:arm('L',0,0,0.06), rightUpperArm:arm('R',0,0,0.06),
+    leftLowerArm:fore('L',0.10), rightLowerArm:fore('R',0.10),
+    leftHand:[0,0,-0.03], rightHand:[0,0,0.03],
+    ...fingers('L','rest'), ...fingers('R','rest'),
+  };
+}
+
+// ── IDLE 4: Hip weight shift ──
+function idle_hipShift(t){
+  const sw=S(t*.95)*.022;
+  return {
+    hips:[0,sw*.50,0], spine:[0.012,-sw*.34,sw*.48],
+    chest:[0.006,-sw*.18,sw*.26], neck:[0.010,0,0],
+    head:[S(t*.60)*.010,-sw*.18,0],
+    leftUpperArm:arm('L',0,0,0.06), rightUpperArm:arm('R',0,0,0.06),
+    leftLowerArm:fore('L',0.10), rightLowerArm:fore('R',0.10),
+    leftHand:[0,0,-0.03], rightHand:[0,0,0.03],
+    ...fingers('L','rest'), ...fingers('R','rest'),
+  };
+}
+
+// ── IDLE 5: Hands clasped gently in front ──
+function idle_clasped(t){
+  const b=breathe(t,.010), rock=S(t*.60)*.008;
+  return {
+    spine:[0.012+b,rock,0], chest:[0.006+b*.5,rock*.5,0],
+    neck:[0.010,0,0], head:[S(t*.42)*.010, S(t*.32)*.012, S(t*.55)*.007],
+    leftUpperArm:arm('L',0.20,0,0.08), rightUpperArm:arm('R',0.20,0,0.08),
+    leftLowerArm:[0.55,0,0.04], rightLowerArm:[0.55,0,-0.04],
+    leftHand:[0,0,0.08], rightHand:[0,0,-0.08],
+    ...fingers('L','loose'), ...fingers('R','loose'),
+  };
+}
+
+// ── IDLE 6: Dreamy slow sway ──
+function idle_dreamy(t){
+  const s1=S(t*.55)*.018, s2=S(t*.38)*.012;
+  return {
+    hips:[0,s1*.30,0], spine:[0.012+s2,s1*(-.20),s1*.38],
+    chest:[0.006,s1*(-.10),s1*.20], neck:[0.010,0,0],
+    head:[S(t*.44)*.012, s1*.22+S(t*.29)*.010, s2*.15],
+    leftUpperArm:arm('L',S(t*.55)*.028,0,0.06), rightUpperArm:arm('R',S(t*.55+0.7)*.028,0,0.06),
+    leftLowerArm:fore('L',0.10+S(t*.55)*.020), rightLowerArm:fore('R',0.10+S(t*.55+0.7)*.020),
+    leftHand:[S(t*.9)*.010,0,-0.03], rightHand:[S(t*.9+0.4)*.010,0,0.03],
+    ...fingers('L','wave'), ...fingers('R','wave'),
+  };
+}
+
+// ── IDLE 7: Small bounce ──
+function idle_bounce(t){
+  const b=A(S(t*1.8))*.014, breathAmt=breathe(t,.009);
+  return {
+    hips:[0,0,0], spine:[0.012+breathAmt+b*.3,0,0],
+    neck:[0.010,0,0], head:[S(t*.46)*.009,S(t*.34)*.011,-b*.08],
+    leftUpperArm:arm('L',b*.12,0,0.06), rightUpperArm:arm('R',b*.12,0,0.06),
+    leftLowerArm:fore('L',0.10), rightLowerArm:fore('R',0.10),
+    leftHand:[0,0,-0.03], rightHand:[0,0,0.03],
+    vrm_bodyY: b*.006,
+    ...fingers('L','rest'), ...fingers('R','rest'),
+  };
+}
+
+// ── IDLE 8: Tapping chin / thinking idly ──
+function idle_ponder(t){
+  const tap=A(S(t*1.8))*S(t*1.8)*.030;
+  return {
+    spine:[0.015+S(t*.6)*.006,0,0], neck:[0.012,0,0],
+    head:[0.018+S(t*.5)*.012, S(t*.35)*.015, S(t*.70)*.008],
+    rightUpperArm:arm('R',0.72,0,0.06),
+    rightLowerArm:[0.42,0,-0.03+tap],
+    rightHand:[0.05+tap,0.03,0.04],
+    leftUpperArm:arm('L',0,0,0.06), leftLowerArm:fore('L',0.10),
+    leftHand:[0,0,-0.03],
+    ...fingers('R','think'), ...fingers('L','rest'),
+  };
+}
+
+const IDLES=[
+  {name:'Relaxed',    fn:idle_natural},
+  {name:'Sway',       fn:idle_sway},
+  {name:'Curious',    fn:idle_curious},
+  {name:'Hip Shift',  fn:idle_hipShift},
+  {name:'Clasped',    fn:idle_clasped},
+  {name:'Dreamy',     fn:idle_dreamy},
+  {name:'Bouncy',     fn:idle_bounce},
+  {name:'Pondering',  fn:idle_ponder},
+  {name:'Musical 🎵', fn:idle_musical},
+  {name:'Confident',  fn:idle_hipsHands},
+  {name:'Slow Rock',  fn:idle_slowRock},
+];
+
+/* ══════════════════════════════════════════════════════
+   GESTURE ANIMATIONS (t = 0..1, arms return DOWN)
+   All use sin(t*PI) envelope = rise and fall cleanly
+══════════════════════════════════════════════════════ */
+const env=t=>S(t*PI); // 0→1→0 envelope
+const envIn=t=>S(t*PI*.5); // 0→1 smooth in
+const envOut=t=>S(t*PI*.5+PI*.5); // 1→0 smooth out
+
+// 1. Wave hello — left arm goes up and waves
+function g_wave(t){
+  const up=env(t), wag=S(t*PI*5)*.22*up;
+  return {
+    spine:[0.012,0,0],
+    leftUpperArm:arm('L',up*.95,up*.08,0.06),
+    leftLowerArm:[0.10+up*.08,0,0.04-up*.05],
+    leftHand:[wag*.4,0,-0.03+wag*.5],
+    rightUpperArm:arm('R',0,0,0.06),
+    rightLowerArm:fore('R',0.10), rightHand:[0,0,0.03],
+    head:[0.010,-up*.09,0], neck:[0.010,-up*.04,0],
+    ...fingers('L','wave'), ...fingers('R','rest'),
+  };
+}
+
+// 2. Thinking — right arm up to chin
+function g_thinking(t){
+  const c=env(t);
+  return {
+    spine:[0.012+c*.022,0,0], chest:[0.006+c*.010,0,0],
+    head:[0.012+c*.040, c*.120, c*.055],
+    neck:[0.010+c*.020, c*.060, c*.028],
+    rightUpperArm:arm('R',0.82*c,0,0.06),
+    rightLowerArm:[0.46+c*.10,0,-0.03+c*.04],
+    rightHand:[0.05,0.04,0.04],
+    leftUpperArm:arm('L',0,0,0.06),
+    leftLowerArm:fore('L',0.10), leftHand:[0,0,-0.03],
+    ...fingers('R','think'), ...fingers('L','rest'),
+  };
+}
+
+// 3. Excited bounce
+function g_excited(t){
+  const b=A(S(t*PI*3.5))*env(t);
+  return {
+    hips:[0,0,S(t*PI*3.5)*.008],
+    spine:[0.012-b*.022,0,0], head:[-b*.060,S(t*PI*2)*.018,0],
+    leftUpperArm:arm('L',b*.26,0,0.06), rightUpperArm:arm('R',b*.26,0,0.06),
+    leftLowerArm:fore('L',0.10+b*.05), rightLowerArm:fore('R',0.10+b*.05),
+    leftHand:[0,0,-0.03], rightHand:[0,0,0.03],
+    vrm_bodyY:b*.005,
+    ...fingers('L','open'), ...fingers('R','open'),
+  };
+}
+
+// 4. Shy — head down, arms cross
+function g_shy(t){
+  const c=env(t);
+  return {
+    spine:[0.020+c*.040,0,0], chest:[0.010+c*.022,0,0],
+    head:[0.030+c*.090, c*.095, c*.075],
+    neck:[0.016+c*.042, c*.048, c*.035],
+    leftUpperArm:arm('L',0.28*c,0.10*c,0.06),
+    rightUpperArm:arm('R',0.28*c,0.10*c,0.06),
+    leftLowerArm:[0.10+c*.36,0,0.04-c*.02],
+    rightLowerArm:[0.10+c*.36,0,-0.04+c*.02],
+    leftHand:[0,0,-0.03], rightHand:[0,0,0.03],
+    ...fingers('L','loose'), ...fingers('R','loose'),
+  };
+}
+
+// 5. Nod yes
+function g_nod(t){
+  const n=S(t*PI*2.5)*env(t);
+  return {
+    head:[0.010+n*.175,0,0], neck:[0.010+n*.080,0,0],
+    spine:[0.012+n*.020,0,0],
+    leftUpperArm:arm('L',0,0,0.06), rightUpperArm:arm('R',0,0,0.06),
+    leftLowerArm:fore('L',0.10), rightLowerArm:fore('R',0.10),
+    ...fingers('L','rest'), ...fingers('R','rest'),
+  };
+}
+
+// 6. Head shake no
+function g_shake(t){
+  const h=S(t*PI*3)*env(t);
+  return {
+    head:[0.010,h*.195,0], neck:[0.010,h*.090,0],
+    spine:[0.012,h*.018,0],
+    leftUpperArm:arm('L',0,0,0.06), rightUpperArm:arm('R',0,0,0.06),
+    leftLowerArm:fore('L',0.10), rightLowerArm:fore('R',0.10),
+    ...fingers('L','rest'), ...fingers('R','rest'),
+  };
+}
+
+// 7. Surprised gasp
+function g_surprised(t){
+  const c=env(t);
+  return {
+    spine:[0.012-c*.038,0,0], chest:[0.006-c*.022,0,0],
+    head:[-c*.075,0,0], neck:[0.010-c*.028,0,0],
+    leftShoulder:[0,0,0.030+c*.06], rightShoulder:[0,0,-0.030-c*.06],
+    leftUpperArm:arm('L',c*.22,0,0.06), rightUpperArm:arm('R',c*.22,0,0.06),
+    leftLowerArm:fore('L',0.10), rightLowerArm:fore('R',0.10),
+    ...fingers('L','open'), ...fingers('R','open'),
+  };
+}
+
+// 8. Point forward
+function g_point(t){
+  const c=env(t);
+  return {
+    spine:[0.012,c*.055,0], head:[0.010,c*.085,0],
+    rightUpperArm:arm('R',0.72*c,-0.04*c,0.06),
+    rightLowerArm:[0.20+c*.10,0,-0.04+c*.05],
+    rightHand:[0,c*.06,0.03],
+    leftUpperArm:arm('L',0,0,0.06),
+    leftLowerArm:fore('L',0.10), leftHand:[0,0,-0.03],
+    ...fingers('R','point'), ...fingers('L','rest'),
+  };
+}
+
+// 9. Peace sign ✌
+function g_peace(t){
+  const c=env(t);
+  return {
+    head:[0.010,-c*.065,c*.065],
+    leftUpperArm:arm('L',0.78*c,0.07*c,0.06),
+    leftLowerArm:[0.10+c*.04,0,0.04-c*.07],
+    leftHand:[0,c*.06,-0.03],
+    rightUpperArm:arm('R',0,0,0.06),
+    rightLowerArm:fore('R',0.10), rightHand:[0,0,0.03],
+    ...fingers('L','peace'), ...fingers('R','rest'),
+  };
+}
+
+// 10. Graceful bow
+function g_bow(t){
+  const c=env(t);
+  return {
+    spine:[0.012+c*.20,0,0], chest:[0.006+c*.13,0,0],
+    upperChest:[c*.08,0,0], neck:[0.010+c*.07,0,0],
+    head:[0.010+c*.055,0,0],
+    leftUpperArm:arm('L',c*.06,0,0.06), rightUpperArm:arm('R',c*.06,0,0.06),
+    leftLowerArm:fore('L',0.10), rightLowerArm:fore('R',0.10),
+    ...fingers('L','open'), ...fingers('R','open'),
+  };
+}
+
+// 11. Arms stretch up
+function g_stretch(t){
+  const c=env(t);
+  return {
+    spine:[0.012-c*.034,0,0], head:[-c*.050,0,0],
+    leftUpperArm:arm('L',PI*.46*c,c*.12,0.06),
+    rightUpperArm:arm('R',PI*.46*c,c*.12,0.06),
+    leftLowerArm:[c*.07,0,0.04], rightLowerArm:[c*.07,0,-0.04],
+    ...fingers('L','open'), ...fingers('R','open'),
+  };
+}
+
+// 12. Clap clap
+function g_clap(t){
+  const cl=A(S(t*PI*4))*env(t);
+  return {
+    spine:[0.012-cl*.018,0,0], head:[-cl*.040,0,0],
+    leftUpperArm:arm('L',0.44*cl,0.16*cl,0.06),
+    rightUpperArm:arm('R',0.44*cl,0.16*cl,0.06),
+    leftLowerArm:[0.10+cl*.33,0,0.04], rightLowerArm:[0.10+cl*.33,0,-0.04],
+    leftHand:[0,0,cl*.04], rightHand:[0,0,-cl*.04],
+    vrm_bodyY:cl*.003,
+    ...fingers('L','open'), ...fingers('R','open'),
+  };
+}
+
+// 13. Sad droop
+function g_sad(t){
+  const c=env(t);
+  return {
+    spine:[0.036+c*.065,0,0], chest:[0.018+c*.038,0,0],
+    neck:[0.028+c*.048,0,0], head:[0.044+c*.082,0,0],
+    leftUpperArm:arm('L',c*.04,0,0.06+c*.02),
+    rightUpperArm:arm('R',c*.04,0,0.06+c*.02),
+    leftLowerArm:fore('L',0.10), rightLowerArm:fore('R',0.10),
+    leftHand:[c*.022,0,-0.03], rightHand:[c*.022,0,0.03],
+    ...fingers('L','loose'), ...fingers('R','loose'),
+  };
+}
+
+// 14. Finger wag (playful scold)
+function g_wag(t){
+  const w=S(t*PI*4.5)*env(t), up=env(t);
+  return {
+    spine:[0.012,w*.025,0], head:[0.010,w*.048,0],
+    rightUpperArm:arm('R',0.70*up,0,0.06),
+    rightLowerArm:[0.38+up*.04,0,-0.04],
+    rightHand:[0,w*.18,0.04],
+    leftUpperArm:arm('L',0,0,0.06),
+    leftLowerArm:fore('L',0.10), leftHand:[0,0,-0.03],
+    ...fingers('R','point'), ...fingers('L','rest'),
+  };
+}
+
+// 15. Look up at stars
+function g_lookup(t){
+  const c=env(t);
+  return {
+    spine:[0.012-c*.028,0,0], neck:[0.010-c*.088,0,0],
+    head:[-c*.165,0,c*.028],
+    leftUpperArm:arm('L',c*.05,0,0.06), rightUpperArm:arm('R',c*.05,0,0.06),
+    leftLowerArm:fore('L',0.10), rightLowerArm:fore('R',0.10),
+    ...fingers('L','rest'), ...fingers('R','rest'),
+  };
+}
+
+// 16. Shrug
+function g_shrug(t){
+  const c=env(t);
+  return {
+    leftShoulder:[0,0,0.030+c*.130], rightShoulder:[0,0,-0.030-c*.130],
+    leftUpperArm:arm('L',c*.12,0,0.06), rightUpperArm:arm('R',c*.12,0,0.06),
+    leftLowerArm:[0.10+c*.08,0,0.04], rightLowerArm:[0.10+c*.08,0,-0.04],
+    head:[0.010-c*.022,0,0],
+    ...fingers('L','open'), ...fingers('R','open'),
+  };
+}
+
+// 17. Head tilt right
+function g_tiltR(t){ const c=env(t); return { head:[0.010,0,c*.175], neck:[0.010,0,c*.085], spine:[0.012,0,c*.022], leftUpperArm:arm('L',0,0,0.06), rightUpperArm:arm('R',0,0,0.06), leftLowerArm:fore('L',0.10), rightLowerArm:fore('R',0.10), ...fingers('L','rest'), ...fingers('R','rest') }; }
+
+// 18. Head tilt left
+function g_tiltL(t){ const c=env(t); return { head:[0.010,0,-c*.175], neck:[0.010,0,-c*.085], spine:[0.012,0,-c*.022], leftUpperArm:arm('L',0,0,0.06), rightUpperArm:arm('R',0,0,0.06), leftLowerArm:fore('L',0.10), rightLowerArm:fore('R',0.10), ...fingers('L','rest'), ...fingers('R','rest') }; }
+
+// 19. Giggle shoulders
+function g_giggle(t){
+  const g=A(S(t*PI*5))*env(t);
+  return {
+    spine:[0.012+g*.012,0,0],
+    leftShoulder:[0,0,0.030+g*.044], rightShoulder:[0,0,-0.030-g*.044],
+    leftUpperArm:arm('L',g*.030,0,0.06), rightUpperArm:arm('R',g*.030,0,0.06),
+    leftLowerArm:[0.10+g*.028,0,0.04], rightLowerArm:[0.10+g*.028,0,-0.04],
+    head:[0.010,g*.014,g*.028],
+    vrm_bodyY:g*.002,
+    ...fingers('L','loose'), ...fingers('R','loose'),
+  };
+}
+
+// 20. Confident chest out
+function g_confident(t){
+  const c=env(t);
+  return {
+    spine:[0.006-c*.012,0,0], chest:[0.003-c*.008,0,0],
+    head:[-0.015,0,0],
+    leftUpperArm:arm('L',-c*.02,0,0.05), rightUpperArm:arm('R',-c*.02,0,0.05),
+    leftLowerArm:fore('L',0.09), rightLowerArm:fore('R',0.09),
+    leftHand:[0,0,-0.05], rightHand:[0,0,0.05],
+    ...fingers('L','loose'), ...fingers('R','loose'),
+  };
+}
+
+// 21. Heart hands (both arms up forming heart)
+function g_heart(t){
+  const c=env(t);
+  return {
+    spine:[0.012-c*.02,0,0], head:[-c*.04,0,0],
+    leftUpperArm:arm('L',0.65*c,0.20*c,0.06),
+    rightUpperArm:arm('R',0.65*c,0.20*c,0.06),
+    leftLowerArm:[0.10+c*.28,0,0.04+c*.15],
+    rightLowerArm:[0.10+c*.28,0,-0.04-c*.15],
+    leftHand:[0,0,c*.12], rightHand:[0,0,-c*.12],
+    ...fingers('L','open'), ...fingers('R','open'),
+  };
+}
+
+// 22. Lean forward interested
+function g_lean(t){
+  const c=env(t);
+  return {
+    spine:[0.012+c*.016,0,0], chest:[0.006+c*.008,0,0],
+    neck:[0.010-c*.010,0,0], head:[S(t*PI)*.012-c*.020,0,0],
+    leftUpperArm:arm('L',c*.04,0,0.06), rightUpperArm:arm('R',c*.04,0,0.06),
+    leftLowerArm:fore('L',0.10), rightLowerArm:fore('R',0.10),
+    ...fingers('L','rest'), ...fingers('R','rest'),
+  };
+}
+
+// 23. Spin and land (full 360)
+function g_spin(t){
+  if(!vrm) return {};
+  vrm.scene.rotation.y = t * PI * 2;
+  const c=env(t);
+  return {
+    leftUpperArm:arm('L',c*.45,c*.20,0.06), rightUpperArm:arm('R',c*.45,c*.20,0.06),
+    leftLowerArm:fore('L',0.10), rightLowerArm:fore('R',0.10),
+    head:[-c*.04,0,0],
+    ...fingers('L','open'), ...fingers('R','open'),
+  };
+}
+
+// 24. Finger to lips (shhh cute)
+function g_shhh(t){
+  const c=env(t);
+  return {
+    spine:[0.012+c*.016,0,0], head:[0.010+c*.030, c*.060, c*.028],
+    rightUpperArm:arm('R',0.88*c,0,0.06),
+    rightLowerArm:[0.52+c*.06,0,-0.02],
+    rightHand:[0.04,0.03,0.04],
+    leftUpperArm:arm('L',0,0,0.06),
+    leftLowerArm:fore('L',0.10), leftHand:[0,0,-0.03],
+    ...fingers('R','point'), ...fingers('L','rest'),
+  };
+}
+
+// 25. Hands on cheeks surprised
+function g_cheeks(t){
+  const c=env(t);
+  return {
+    spine:[0.012-c*.025,0,0], head:[-c*.040,0,0],
+    leftUpperArm:arm('L',0.58*c,0.25*c,0.06),
+    rightUpperArm:arm('R',0.58*c,0.25*c,0.06),
+    leftLowerArm:[0.10+c*.32,0,0.04+c*.10],
+    rightLowerArm:[0.10+c*.32,0,-0.04-c*.10],
+    leftHand:[0,-c*.04,c*.06], rightHand:[0,-c*.04,-c*.06],
+    ...fingers('L','loose'), ...fingers('R','loose'),
+  };
+}
+
+// 26. Thumbs up
+function g_thumbsUp(t){
+  const c=env(t);
+  return {
+    head:[0.010,-c*.06,c*.06],
+    rightUpperArm:arm('R',0.50*c,0,0.06),
+    rightLowerArm:[0.10+c*.12,0,-0.04],
+    rightHand:[0,c*.04,0.03],
+    leftUpperArm:arm('L',0,0,0.06),
+    leftLowerArm:fore('L',0.10), leftHand:[0,0,-0.03],
+    ...fingers('R','ok'), ...fingers('L','rest'),
+  };
+}
+
+// 27. Stretch sideways
+function g_sideStretch(t){
+  const c=env(t);
+  return {
+    spine:[0.012,-c*.08,c*.06], chest:[0.006,-c*.04,c*.03],
+    head:[0.010,-c*.04,c*.04],
+    leftUpperArm:arm('L',PI*.38*c,-c*.12,0.06),
+    rightUpperArm:arm('R',c*.06,0,0.06),
+    leftLowerArm:[c*.06,0,0.04], rightLowerArm:fore('R',0.10),
+    ...fingers('L','open'), ...fingers('R','rest'),
+  };
+}
+
+// 28. Hair flip (head toss + hand)
+function g_hairFlip(t){
+  const c=env(t), flip=S(t*PI)*.18;
+  return {
+    head:[0.010,c*.12,flip],
+    neck:[0.010,c*.06,flip*.5],
+    rightUpperArm:arm('R',0.55*c,0.10*c,0.06),
+    rightLowerArm:[0.10+c*.22,0,-0.04+c*.08],
+    rightHand:[0,c*.08,-0.03],
+    leftUpperArm:arm('L',0,0,0.06),
+    leftLowerArm:fore('L',0.10), leftHand:[0,0,-0.03],
+    ...fingers('R','wave'), ...fingers('L','rest'),
+  };
+}
+
+// 29. Cute salute
+function g_salute(t){
+  const c=env(t);
+  return {
+    head:[0.010-c*.02,c*.04,-c*.02],
+    rightUpperArm:arm('R',0.70*c,-c*.06,0.06),
+    rightLowerArm:[0.10+c*.30,0,-0.04+c*.06],
+    rightHand:[-c*.04,0,0.04],
+    leftUpperArm:arm('L',0,0,0.06),
+    leftLowerArm:fore('L',0.10), leftHand:[0,0,-0.03],
+    ...fingers('R','open'), ...fingers('L','rest'),
+  };
+}
+
+// 30. Both arms out open embrace
+function g_embrace(t){
+  const c=env(t);
+  return {
+    spine:[0.012-c*.014,0,0], head:[-c*.025,0,0],
+    leftUpperArm:arm('L',0.40*c,0.28*c,0.06),
+    rightUpperArm:arm('R',0.40*c,0.28*c,0.06),
+    leftLowerArm:[0.10+c*.12,0,0.04], rightLowerArm:[0.10+c*.12,0,-0.04],
+    leftHand:[0,0,-c*.04], rightHand:[0,0,c*.04],
+    ...fingers('L','open'), ...fingers('R','open'),
+  };
+}
+
+// SPEAKING GESTURES (31-38) — subtle, while talking
+function g_sp1(t){ // left hand lifts slightly
+  const sw=S(t*PI*2)*.07*env(t);
+  return {
+    spine:[0.012,S(t*PI)*.022,0], head:[0.010,S(t*PI)*.050,0],
+    leftUpperArm:arm('L',S(t*PI)*.18,0,0.06),
+    leftLowerArm:[0.10+S(t*PI)*.12,0,0.04],
+    leftHand:[sw,0,-0.03],
+    rightUpperArm:arm('R',0,0,0.06), rightLowerArm:fore('R',0.10),
+    ...fingers('L','open'), ...fingers('R','rest'),
+  };
+}
+function g_sp2(t){ // both hands gentle
+  const sw=S(t*PI*2)*env(t)*.08;
+  return {
+    spine:[0.012,sw*.12,0], head:[0.010,sw*.18,0],
+    leftUpperArm:arm('L',A(sw)*.22,0,0.06), rightUpperArm:arm('R',A(sw)*.22,0,0.06),
+    leftLowerArm:[0.10+A(sw)*.17,0,0.04], rightLowerArm:[0.10+A(sw)*.17,0,-0.04],
+    leftHand:[sw*.18,0,-0.03], rightHand:[-sw*.18,0,0.03],
+    ...fingers('L','open'), ...fingers('R','open'),
+  };
+}
+function g_sp3(t){ // right hand emphasis
+  const ch=S(t*PI*3)*env(t);
+  return {
+    head:[0.010,ch*.032,0],
+    rightUpperArm:arm('R',0.52*env(t),0,0.06),
+    rightLowerArm:[0.28+ch*.05,0,-0.04],
+    rightHand:[0,ch*.10,0.04],
+    leftUpperArm:arm('L',0,0,0.06), leftLowerArm:fore('L',0.10),
+    ...fingers('R','open'), ...fingers('L','rest'),
+  };
+}
+function g_sp4(t){ // point while explaining
+  const c=env(t);
+  return {
+    spine:[0.012,c*.035,0], head:[0.010,c*.055,0],
+    rightUpperArm:arm('R',0.48*c,0,0.06),
+    rightLowerArm:[0.18+c*.07,0,-0.04+c*.04],
+    rightHand:[0,c*.05,0.03],
+    leftUpperArm:arm('L',0,0,0.06), leftLowerArm:fore('L',0.10),
+    ...fingers('R','point'), ...fingers('L','rest'),
+  };
+}
+function g_sp5(t){ // head bob while talking
+  const bob=S(t*PI*2)*env(t);
+  return {
+    head:[0.010+bob*.025,S(t*PI*2)*.028,0],
+    neck:[0.010+bob*.012,0,0],
+    leftUpperArm:arm('L',0,0,0.06), rightUpperArm:arm('R',0,0,0.06),
+    leftLowerArm:fore('L',0.10), rightLowerArm:fore('R',0.10),
+    ...fingers('L','rest'), ...fingers('R','rest'),
+  };
+}
+function g_sp6(t){ // open palms explain
+  const c=env(t);
+  return {
+    spine:[0.012,S(t*PI)*.018,0],
+    leftUpperArm:arm('L',c*.32,c*.12,0.06), rightUpperArm:arm('R',c*.32,c*.12,0.06),
+    leftLowerArm:[0.10+c*.24,0,0.04], rightLowerArm:[0.10+c*.24,0,-0.04],
+    leftHand:[0,c*.06,-0.04], rightHand:[0,c*.06,0.04],
+    ...fingers('L','open'), ...fingers('R','open'),
+  };
+}
+function g_sp7(t){ // single hand sweep
+  const sw=S(t*PI)*.14;
+  return {
+    head:[0.010,env(t)*.040,0],
+    rightUpperArm:arm('R',env(t)*.38,sw,0.06),
+    rightLowerArm:[0.10+env(t)*.20,0,-0.04],
+    rightHand:[0,0,0.04],
+    leftUpperArm:arm('L',0,0,0.06), leftLowerArm:fore('L',0.10),
+    ...fingers('R','open'), ...fingers('L','rest'),
+  };
+}
+function g_sp8(t){ // thinking nod while talking
+  const n=S(t*PI*1.5)*env(t);
+  return {
+    head:[0.010+n*.055,n*.030,0], neck:[0.010+n*.025,0,0],
+    rightUpperArm:arm('R',0.60*env(t),0,0.06),
+    rightLowerArm:[0.36,0,-0.03], rightHand:[0.04,0.03,0.04],
+    leftUpperArm:arm('L',0,0,0.06), leftLowerArm:fore('L',0.10),
+    ...fingers('R','think'), ...fingers('L','rest'),
+  };
+}
+
+/* ══════════════════════════════════════════════════════
+   NEW EXPRESSIVE ANIMATIONS — cute, lively, characterful
+══════════════════════════════════════════════════════ */
+
+// 38. Blowing kiss — hand to lips, then away
+function g_blowKiss(t){
+  const c=env(t), wave=Math.sin(t*PI*3)*0.18*c;
+  return {
+    spine:[0.012,0,0], head:[0.010-c*.03,c*.05,c*.04],
+    rightUpperArm:arm('R',0.82*c,0,0.06),
+    rightLowerArm:[0.48+c*.08,0,-0.02],
+    rightHand:[0.04+wave,0.05,0.04],
+    leftUpperArm:arm('L',0,0,0.06), leftLowerArm:fore('L',0.10),
+    ...fingers('R','ok'), ...fingers('L','rest'),
+  };
+}
+
+// 39. Wink + finger gun (playful)
+function g_fingerGun(t){
+  const c=env(t), recoil=Math.abs(Math.sin(t*PI*4))*0.06*c;
+  return {
+    spine:[0.012,c*.04,0], head:[0.010,c*.08,-c*.04],
+    rightUpperArm:arm('R',0.65*c,-0.05*c,0.06),
+    rightLowerArm:[0.22+c*.12,0,-0.04+c*.06-recoil],
+    rightHand:[-recoil,c*.06,0.04],
+    leftUpperArm:arm('L',0,0,0.06), leftLowerArm:fore('L',0.10),
+    leftHand:[0,0,-0.03],
+    ...fingers('R','point'), ...fingers('L','rest'),
+  };
+}
+
+// 40. Double peace + lean (classic idol pose)
+function g_idolPose(t){
+  const c=env(t);
+  return {
+    spine:[0.012-c*.018,c*.03,0], head:[0.010-c*.02,-c*.06,c*.08],
+    leftUpperArm:arm('L',0.78*c,0.08*c,0.06),
+    rightUpperArm:arm('R',0.72*c,0.06*c,0.06),
+    leftLowerArm:[0.10+c*.04,0,0.04-c*.07],
+    rightLowerArm:[0.10+c*.04,0,-0.04+c*.06],
+    leftHand:[0,c*.07,-0.03], rightHand:[0,c*.07,0.03],
+    ...fingers('L','peace'), ...fingers('R','peace'),
+  };
+}
+
+// 41. Thinking with raised brow — head rest on fist
+function g_deepThink(t){
+  const c=env(t), bob=Math.sin(t*PI*2)*0.008;
+  return {
+    spine:[0.015+c*.025,0,0], chest:[0.008+c*.012,0,0],
+    head:[0.015+c*.055+bob, c*.14, c*.06],
+    neck:[0.012+c*.022, c*.07, c*.03],
+    rightUpperArm:arm('R',0.85*c,0,0.06),
+    rightLowerArm:[0.50+c*.10,0,-0.03],
+    rightHand:[0.06,0.05,0.04],
+    leftUpperArm:arm('L',0.30*c,0,0.06),
+    leftLowerArm:[0.10+c*.28,0,0.04],
+    leftHand:[0,0,-0.02],
+    ...fingers('R','fist'), ...fingers('L','rest'),
+  };
+}
+
+// 42. Excited hand raise (raise right hand high)
+function g_raiseHand(t){
+  const c=env(t), wave=Math.sin(t*PI*5)*0.14*c;
+  return {
+    spine:[0.012-c*.02,0,0], head:[-c*.04,c*.06,0],
+    rightUpperArm:arm('R',PI*.46*c,0.12*c,0.06),
+    rightLowerArm:[c*.06,0,-0.04],
+    rightHand:[wave,0,0.03],
+    leftUpperArm:arm('L',0,0,0.06), leftLowerArm:fore('L',0.10),
+    ...fingers('R','open'), ...fingers('L','rest'),
+  };
+}
+
+// 43. Dramatic gasp — both hands to face
+function g_gasp(t){
+  const c=env(t);
+  return {
+    spine:[0.012-c*.042,0,0], head:[-c*.08,0,0],
+    neck:[0.010-c*.032,0,0],
+    leftUpperArm:arm('L',0.60*c,0.22*c,0.06),
+    rightUpperArm:arm('R',0.60*c,0.22*c,0.06),
+    leftLowerArm:[0.10+c*.32,0,0.04+c*.10],
+    rightLowerArm:[0.10+c*.32,0,-0.04-c*.10],
+    leftHand:[0,-c*.04,c*.06], rightHand:[0,-c*.04,-c*.06],
+    ...fingers('L','open'), ...fingers('R','open'),
+  };
+}
+
+// 44. Playful tongue-out (head tilt + shrug energy)
+function g_playful(t){
+  const c=env(t), bob=Math.abs(Math.sin(t*PI*3))*0.014*c;
+  return {
+    spine:[0.012+bob*.4,0,0],
+    head:[0.010+bob, 0, c*.18], neck:[0.010, 0, c*.09],
+    leftShoulder:[0,0,0.035+c*.10], rightShoulder:[0,0,-0.035-c*.10],
+    leftUpperArm:arm('L',c*.18,0,0.06), rightUpperArm:arm('R',c*.18,0,0.06),
+    leftLowerArm:[0.10+c*.08,0,0.04], rightLowerArm:[0.10+c*.08,0,-0.04],
+    vrm_bodyY:bob*.25,
+    ...fingers('L','open'), ...fingers('R','open'),
+  };
+}
+
+// 45. Head in hands (embarrassed/shy)
+function g_embarrassed(t){
+  const c=env(t);
+  return {
+    spine:[0.025+c*.04,0,0], chest:[0.012+c*.02,0,0],
+    head:[0.030+c*.09, c*.08, c*.07],
+    neck:[0.018+c*.04, c*.04, c*.035],
+    leftUpperArm:arm('L',0.55*c,0.20*c,0.06),
+    rightUpperArm:arm('R',0.55*c,0.20*c,0.06),
+    leftLowerArm:[0.10+c*.28,0,0.04+c*.08],
+    rightLowerArm:[0.10+c*.28,0,-0.04-c*.08],
+    leftHand:[0,-c*.03,c*.04], rightHand:[0,-c*.03,-c*.04],
+    ...fingers('L','loose'), ...fingers('R','loose'),
+  };
+}
+
+// 46. Victory pose — one arm punch up
+function g_victory(t){
+  const c=env(t), punch=Math.abs(Math.sin(t*PI*2))*0.08*c;
+  return {
+    spine:[0.012-c*.03,0,0], head:[-c*.04,c*.06,0],
+    rightUpperArm:arm('R',PI*.44*c,0.14*c,0.06),
+    rightLowerArm:[c*.06-punch,0,-0.04],
+    rightHand:[-punch*.5,0,0.03],
+    leftUpperArm:arm('L',0,0,0.06), leftLowerArm:fore('L',0.10),
+    vrm_bodyY:punch*.2,
+    ...fingers('R','fist'), ...fingers('L','rest'),
+  };
+}
+
+// 47. Cute pout (arms crossed, head tilted away)
+function g_pout(t){
+  const c=env(t);
+  return {
+    spine:[0.020+c*.030,0,0], chest:[0.010+c*.015,0,0],
+    head:[0.018+c*.055, -c*.12, c*.10],
+    neck:[0.014+c*.028, -c*.06, c*.05],
+    leftUpperArm:arm('L',0.25*c,0.08*c,0.06),
+    rightUpperArm:arm('R',0.25*c,0.08*c,0.06),
+    leftLowerArm:[0.10+c*.40,0,0.04-c*.02],
+    rightLowerArm:[0.10+c*.40,0,-0.04+c*.02],
+    leftHand:[0,0,-0.03], rightHand:[0,0,0.03],
+    ...fingers('L','loose'), ...fingers('R','loose'),
+  };
+}
+
+// 48. Starry eyes / amazed (lean back, arms wide)
+function g_amazed(t){
+  const c=env(t);
+  return {
+    spine:[0.012-c*.04,0,0], chest:[0.006-c*.02,0,0],
+    head:[-c*.06,0,0], neck:[0.010-c*.04,0,0],
+    leftUpperArm:arm('L',c*.38,c*.28,0.06),
+    rightUpperArm:arm('R',c*.38,c*.28,0.06),
+    leftLowerArm:[0.10+c*.08,0,0.04], rightLowerArm:[0.10+c*.08,0,-0.04],
+    leftHand:[0,c*.04,-0.03], rightHand:[0,c*.04,0.03],
+    ...fingers('L','open'), ...fingers('R','open'),
+  };
+}
+
+// 49. Skip step (weight shift + arm swing like walking happy)
+function g_skipStep(t){
+  const S2=Math.sin;
+  const skip=S2(t*PI*2)*.022, c=env(t);
+  return {
+    hips:[0, skip*5, skip*3],
+    spine:[0.012, -skip*3, skip*4],
+    head:[0.010, skip*10, 0],
+    leftUpperArm:arm('L', 0.20+skip*4, 0, 0.06),
+    rightUpperArm:arm('R', 0.20-skip*4, 0, 0.06),
+    leftLowerArm:[0.14+skip*2,0,0.04], rightLowerArm:[0.14-skip*2,0,-0.04],
+    vrm_bodyY: Math.abs(skip)*.3,
+    ...fingers('L','loose'), ...fingers('R','loose'),
+  };
+}
+
+// 50. Wrist twirl (both arms out, wrists rotating — classic idol)
+function g_wristTwirl(t){
+  const S2=Math.sin, c=env(t);
+  const twirl = t*PI*4;
+  return {
+    spine:[0.012,S2(t*PI)*.018,0],
+    head:[0.010,S2(t*PI)*.05,0],
+    leftUpperArm:arm('L',0.45*c,0.18*c,0.06),
+    rightUpperArm:arm('R',0.45*c,0.18*c,0.06),
+    leftLowerArm:[0.20,0,0.04],
+    rightLowerArm:[0.20,0,-0.04],
+    leftHand:[S2(twirl)*.06*c, S2(twirl+PI*.5)*.06*c, -0.03],
+    rightHand:[S2(twirl+PI)*.06*c, S2(twirl+PI*1.5)*.06*c, 0.03],
+    ...fingers('L','open'), ...fingers('R','open'),
+  };
+}
+
+// 51. Hands behind head (relaxed/sassy)
+function g_sassyRelax(t){
+  const c=env(t);
+  return {
+    spine:[0.010-c*.012,0,0], head:[-c*.015,c*.04,0],
+    leftUpperArm:arm('L',0.55*c,0.32*c,0.06),
+    rightUpperArm:arm('R',0.55*c,0.32*c,0.06),
+    leftLowerArm:[0.10+c*.38,0,0.04+c*.22],
+    rightLowerArm:[0.10+c*.38,0,-0.04-c*.22],
+    leftHand:[0,-c*.04,-c*.06], rightHand:[0,-c*.04,c*.06],
+    ...fingers('L','loose'), ...fingers('R','loose'),
+  };
+}
+
+// 52. Double tap cheek (thinking while cute)
+function g_cheekTap(t){
+  const c=env(t), tap=Math.abs(Math.sin(t*PI*3))*0.015*c;
+  return {
+    spine:[0.015+c*.010,0,0], head:[0.015+c*.040+tap,c*.06,c*.03],
+    neck:[0.012+c*.020,c*.03,c*.015],
+    rightUpperArm:arm('R',0.55*c,0.22*c,0.06),
+    rightLowerArm:[0.10+c*.28,0,-0.04+c*.08],
+    rightHand:[0-tap,-c*.03,-c*.04],
+    leftUpperArm:arm('L',0.45*c,0.18*c,0.06),
+    leftLowerArm:[0.10+c*.22,0,0.04+c*.06],
+    leftHand:[tap,-c*.03,c*.04],
+    ...fingers('L','loose'), ...fingers('R','loose'),
+  };
+}
+
+// 53. Cheerful skip in place (fast bounce + swing)
+function g_cheerSkip(t){
+  const S2=Math.sin;
+  const b=Math.abs(S2(t*PI*4))*.018*env(t);
+  const sw=S2(t*PI*4)*.025*env(t);
+  return {
+    hips:[0,sw*4,0], spine:[0.012+b*.4,-sw*2,sw*3],
+    head:[0.010,sw*8,0],
+    leftUpperArm:arm('L',0.30+sw*5,0,0.06), rightUpperArm:arm('R',0.30-sw*5,0,0.06),
+    leftLowerArm:[0.16+sw*2,0,0.04], rightLowerArm:[0.16-sw*2,0,-0.04],
+    vrm_bodyY:b*.3,
+    ...fingers('L','open'), ...fingers('R','open'),
+  };
+}
+
+// 54. Slow gentle spin (elegant, idol-style)
+function g_elegantSpin(t){
+  if(vrm) vrm.scene.rotation.y = t * PI * 2;
+  const S2=Math.sin;
+  const c=env(t);
+  return {
+    spine:[0.012,0,0],
+    leftUpperArm:arm('L',0.28*c,0.10*c,0.06),
+    rightUpperArm:arm('R',0.28*c,0.10*c,0.06),
+    leftLowerArm:fore('L',0.10+c*.04), rightLowerArm:fore('R',0.10+c*.04),
+    head:[0.010, S2(t*PI)*.08, 0],
+    ...fingers('L','wave'), ...fingers('R','wave'),
+  };
+}
+
+// 55. Nose scrunch / embarrassed laugh
+function g_scrunch(t){
+  const c=env(t), bob=Math.abs(Math.sin(t*PI*4))*0.012*c;
+  return {
+    spine:[0.012+bob*.3,0,0],
+    head:[0.010+bob, c*.04, c*.05],
+    leftUpperArm:arm('L',c*.22,0.08*c,0.06),
+    rightUpperArm:arm('R',c*.22,0.08*c,0.06),
+    leftLowerArm:[0.10+c*.14,0,0.04], rightLowerArm:[0.10+c*.14,0,-0.04],
+    vrm_bodyY:bob*.18,
+    ...fingers('L','loose'), ...fingers('R','loose'),
+  };
+}
+
+// 56. Fluttery hands (excited flapping like happy bird)
+function g_flutterHands(t){
+  const S2=Math.sin, c=env(t);
+  const fl=S2(t*PI*8)*.20*c;
+  return {
+    spine:[0.012-c*.02,0,0], head:[-c*.04,S2(t*PI*2)*.04,0],
+    leftUpperArm:arm('L',0.50*c,0.22*c,0.06),
+    rightUpperArm:arm('R',0.50*c,0.22*c,0.06),
+    leftLowerArm:[0.10+c*.12,0,0.04+fl*.5],
+    rightLowerArm:[0.10+c*.12,0,-0.04-fl*.5],
+    leftHand:[fl*.3,fl*.2,-0.03],
+    rightHand:[-fl*.3,fl*.2,0.03],
+    vrm_bodyY:Math.abs(fl)*.04,
+    ...fingers('L','open'), ...fingers('R','open'),
+  };
+}
+
+// 57. Look left & right mischievously
+function g_sneaky(t){
+  const S2=Math.sin;
+  const look = S2(t*PI*2)*.30;
+  return {
+    spine:[0.012,S2(t*PI*2)*.028,0],
+    head:[0.010, look, 0], neck:[0.010, look*.45, 0],
+    leftUpperArm:arm('L',0,0,0.06), rightUpperArm:arm('R',0,0,0.06),
+    leftLowerArm:fore('L',0.10), rightLowerArm:fore('R',0.10),
+    ...fingers('L','rest'), ...fingers('R','rest'),
+  };
+}
+
+// 58. Point at self proudly
+function g_selfPoint(t){
+  const c=env(t);
+  return {
+    spine:[0.012-c*.018,0,0], head:[-c*.025,c*.04,0],
+    leftUpperArm:arm('L',0.72*c,-0.04*c,0.06),
+    leftLowerArm:[0.22+c*.10,0,0.04+c*.06],
+    leftHand:[0,c*.06,-0.03],
+    rightUpperArm:arm('R',0,0,0.06), rightLowerArm:fore('R',0.10),
+    ...fingers('L','point'), ...fingers('R','rest'),
+  };
+}
+
+// 59. Cute stomp (frustrated but adorable)
+function g_cuteStompt(t){
+  const S2=Math.sin, bob=Math.abs(S2(t*PI*3))*.014*env(t);
+  return {
+    hips:[0,0,S2(t*PI*3)*.010],
+    spine:[0.018+bob*.3,0,0],
+    head:[0.015,S2(t*PI*3)*.04,S2(t*PI*3)*.02],
+    leftUpperArm:arm('L',0.32*env(t),0.10*env(t),0.06),
+    rightUpperArm:arm('R',0.32*env(t),0.10*env(t),0.06),
+    leftLowerArm:[0.10+env(t)*.28,0,0.04],
+    rightLowerArm:[0.10+env(t)*.28,0,-0.04],
+    vrm_bodyY:bob*.18,
+    ...fingers('L','fist'), ...fingers('R','fist'),
+  };
+}
+
+// 60. Sparkle wave — slow graceful arm raise both sides
+function g_sparkleWave(t){
+  const S2=Math.sin, c=env(t);
+  const twinkle=S2(t*PI*6)*.035*c;
+  return {
+    spine:[0.012-c*.015,0,0], head:[-c*.025,S2(t*PI)*.06,0],
+    leftUpperArm:arm('L',0.62*c,0.22*c,0.06),
+    rightUpperArm:arm('R',0.58*c,0.18*c,0.06),
+    leftLowerArm:[c*.06,0,0.04+twinkle],
+    rightLowerArm:[c*.06,0,-0.04-twinkle],
+    leftHand:[twinkle,twinkle,-0.03], rightHand:[-twinkle,twinkle,0.03],
+    ...fingers('L','open'), ...fingers('R','open'),
+  };
+}
+
+// NEW IDLE POSES
+// 9. Swaying arms like listening to music
+function idle_musical(t){
+  const S2=Math.sin, sw=S2(t*.95)*.016, arm_swing=S2(t*.95)*.060;
+  return {
+    hips:[0,sw*.42,0], spine:[0.012,-sw*.28,sw*.44], chest:[0.006,-sw*.14,sw*.24],
+    neck:[0.010,0,0], head:[S2(t*.50)*.010, S2(t*.95)*.024+sw*.12, S2(t*.70)*.006],
+    leftUpperArm:arm('L',0.10+arm_swing,0,0.06), rightUpperArm:arm('R',0.10-arm_swing,0,0.06),
+    leftLowerArm:[0.10+arm_swing*.4,0,0.04], rightLowerArm:[0.10-arm_swing*.4,0,-0.04],
+    leftHand:[S2(t*.95)*.015,0,-0.03], rightHand:[S2(t*.95)*.015,0,0.03],
+    ...fingers('L','loose'), ...fingers('R','loose'),
+  };
+}
+
+// 10. Hands on hips (confident cute stance)
+function idle_hipsHands(t){
+  const S2=Math.sin, b=S2(t*1.45)*.010;
+  return {
+    spine:[0.008+b,0,0], chest:[0.004+b*.5,0,0],
+    head:[S2(t*.46)*.008,S2(t*.33)*.012,S2(t*.58)*.006],
+    leftUpperArm:arm('L',0.28,0.18,0.06),
+    rightUpperArm:arm('R',0.28,0.18,0.06),
+    leftLowerArm:[0.10+0.38,0,0.04+0.18],
+    rightLowerArm:[0.10+0.38,0,-0.04-0.18],
+    leftHand:[0,-0.04,0.12], rightHand:[0,-0.04,-0.12],
+    ...fingers('L','loose'), ...fingers('R','loose'),
+  };
+}
+
+// 11. Slow full-body rock (like swaying to slow music)
+function idle_slowRock(t){
+  const S2=Math.sin;
+  const r1=S2(t*.60)*.020, r2=S2(t*.38)*.012;
+  return {
+    hips:[0,r1*.40,0], spine:[0.012+r2,-r1*.26,r1*.38],
+    chest:[0.006+r2*.5,-r1*.14,r1*.20],
+    neck:[0.010,0,0], head:[S2(t*.44)*.010, r1*.18+S2(t*.28)*.008, r2*.12],
+    leftUpperArm:arm('L',S2(t*.60)*.030,0,0.06),
+    rightUpperArm:arm('R',S2(t*.60+0.8)*.030,0,0.06),
+    leftLowerArm:fore('L',0.10+S2(t*.60)*.018),
+    rightLowerArm:fore('R',0.10+S2(t*.60+0.8)*.018),
+    leftHand:[S2(t*.95)*.012,0,-0.03], rightHand:[S2(t*.95+0.4)*.012,0,0.03],
+    ...fingers('L','loose'), ...fingers('R','loose'),
+  };
+}
+
+const GESTS=[
+  {id:0,  name:'Wave Hello',    dur:3.2, fn:g_wave},
+  {id:1,  name:'Thinking...',   dur:3.6, fn:g_thinking},
+  {id:2,  name:'Excited!',      dur:2.0, fn:g_excited},
+  {id:3,  name:'Shy~',          dur:2.8, fn:g_shy},
+  {id:4,  name:'Nodding',       dur:1.8, fn:g_nod},
+  {id:5,  name:'Head Shake',    dur:2.0, fn:g_shake},
+  {id:6,  name:'Surprised!',    dur:2.2, fn:g_surprised},
+  {id:7,  name:'Pointing',      dur:2.5, fn:g_point},
+  {id:8,  name:'Peace ✌',      dur:2.6, fn:g_peace},
+  {id:9,  name:'Bowing',        dur:2.8, fn:g_bow},
+  {id:10, name:'Stretching',    dur:3.0, fn:g_stretch},
+  {id:11, name:'Clapping!',     dur:2.4, fn:g_clap},
+  {id:12, name:'Sad...',        dur:3.0, fn:g_sad},
+  {id:13, name:'Finger Wag',    dur:2.4, fn:g_wag},
+  {id:14, name:'Looking Up',    dur:2.6, fn:g_lookup},
+  {id:15, name:'Shrugging',     dur:2.2, fn:g_shrug},
+  {id:16, name:'Tilt Right',    dur:2.2, fn:g_tiltR},
+  {id:17, name:'Tilt Left',     dur:2.2, fn:g_tiltL},
+  {id:18, name:'Giggling~',     dur:2.0, fn:g_giggle},
+  {id:19, name:'Confident',     dur:3.0, fn:g_confident},
+  {id:20, name:'Heart Hands',   dur:2.8, fn:g_heart},
+  {id:21, name:'Lean In',       dur:2.5, fn:g_lean},
+  {id:22, name:'Spin!',         dur:2.8, fn:g_spin},
+  {id:23, name:'Shhh~',         dur:2.6, fn:g_shhh},
+  {id:24, name:'Kyaa~',         dur:2.2, fn:g_cheeks},
+  {id:25, name:'Thumbs Up!',    dur:2.4, fn:g_thumbsUp},
+  {id:26, name:'Side Stretch',  dur:2.8, fn:g_sideStretch},
+  {id:27, name:'Hair Flip',     dur:2.4, fn:g_hairFlip},
+  {id:28, name:'Salute!',       dur:2.2, fn:g_salute},
+  {id:29, name:'Big Hug~',      dur:2.8, fn:g_embrace},
+  {id:30, name:'Explaining',    dur:3.0, fn:g_sp1},
+  {id:31, name:'Both Hands',    dur:2.5, fn:g_sp2},
+  {id:32, name:'Emphasis',      dur:2.0, fn:g_sp3},
+  {id:33, name:'Gesturing',     dur:2.6, fn:g_sp4},
+  {id:34, name:'Head Bob',      dur:2.2, fn:g_sp5},
+  {id:35, name:'Open Palms',    dur:2.8, fn:g_sp6},
+  {id:36, name:'Sweep',         dur:2.4, fn:g_sp7},
+  {id:37, name:'Think & Talk',  dur:2.6, fn:g_sp8},
+  // New expressive animations
+  {id:38, name:'Blow Kiss 💋',   dur:2.6, fn:g_blowKiss},
+  {id:39, name:'Finger Gun 🔫',  dur:2.4, fn:g_fingerGun},
+  {id:40, name:'Idol Pose ✨',   dur:2.8, fn:g_idolPose},
+  {id:41, name:'Deep Think 🤔',  dur:3.2, fn:g_deepThink},
+  {id:42, name:'Raise Hand ✋',  dur:2.6, fn:g_raiseHand},
+  {id:43, name:'Gasp! 😮',      dur:2.2, fn:g_gasp},
+  {id:44, name:'Playful~ 😜',   dur:2.4, fn:g_playful},
+  {id:45, name:'Embarrassed~ 😳',dur:2.8, fn:g_embarrassed},
+  {id:46, name:'Victory! ✊',    dur:2.6, fn:g_victory},
+  {id:47, name:'Pout~ 🥺',      dur:2.8, fn:g_pout},
+  {id:48, name:'Amazed~ ✨',     dur:2.4, fn:g_amazed},
+  {id:49, name:'Skip Step 🎵',   dur:2.2, fn:g_skipStep},
+  {id:50, name:'Wrist Twirl 💫', dur:2.8, fn:g_wristTwirl},
+  {id:51, name:'Sassy~ 😎',     dur:2.6, fn:g_sassyRelax},
+  {id:52, name:'Cheek Tap~ 🌸',  dur:2.4, fn:g_cheekTap},
+  {id:53, name:'Cheer Skip ⭐',  dur:2.0, fn:g_cheerSkip},
+  {id:54, name:'Elegant Spin 🌀',dur:2.8, fn:g_elegantSpin},
+  {id:55, name:'Laugh~ 😂',      dur:2.2, fn:g_scrunch},
+  {id:56, name:'Flutter! 🦋',    dur:2.4, fn:g_flutterHands},
+  {id:57, name:'Sneaky~ 👀',     dur:2.6, fn:g_sneaky},
+  {id:58, name:'That\'s Me! 😄', dur:2.4, fn:g_selfPoint},
+  {id:59, name:'Cute Stomp~ 😤', dur:2.2, fn:g_cuteStompt},
+  {id:60, name:'Sparkle Wave ✨', dur:2.8, fn:g_sparkleWave},
+];
+
+/* ══════════════════════════════════════════════════════
+   EMOTION MAPPINGS  (expanded with new animations)
+══════════════════════════════════════════════════════ */
+const EMO_GESTS={
+  happy:    [2,11,18,8,40,38,53,56,46,20,29,25],
+  excited:  [2,11,0,10,8,42,46,53,56,60,20,25],
+  surprised:[6,15,14,43,24,48,45,57],
+  thinking: [1,4,16,14,41,52,57,23],
+  shy:      [3,17,4,15,23,24,47,45,52],
+  sad:      [12,3,5,17,47],
+  greeting: [0,9,8,2,28,29,38,40],
+  listening:[4,16,17,21,30,44,51,57],
+};
+const EXPR_MAP={
+  happy:    {happy:0.88},
+  excited:  {happy:1.0,surprised:0.28},
+  surprised:{surprised:0.94},
+  thinking: {relaxed:0.60},
+  shy:      {happy:0.50,surprised:0.18},
+  sad:      {sad:0.86},
+  greeting: {happy:0.80},
+  listening:{relaxed:0.30},
+};
+const ALL_EX=['happy','surprised','sad','angry','relaxed'];
+let exT={}, exC={};
+
+function applyEmo(emo){
+  exT={...(EXPR_MAP[emo]??{})};
+  const lbl={happy:'😊 Happy',excited:'⭐ Excited',surprised:'😲 Surprised',
+    thinking:'🤔 Thinking',shy:'🌸 Shy',sad:'😢 Sad',greeting:'👋 Hello!',listening:'👂 Listening'};
+  const el=document.getElementById('etag');
+  el.textContent=lbl[emo]??'✨ Ready';
+  el.classList.add('on');
+  setTimeout(()=>el.classList.remove('on'),3200);
+}
+
+/* ══════════════════════════════════════════════════════
+   SCHEDULER
+══════════════════════════════════════════════════════ */
+let curIdle=IDLES[0], idleTime=0, swapIn=9;
+let curGest=null, gestTime=0;
+let isTalking=false, nextTalkGest=0;
+let blinkT=2.5+Math.random()*3, blinkPh=0, isBlinking=false;
+let mouthV=0, bodyY=0;
+
+function playGest(id){
+  const g=GESTS.find(x=>x.id===id); if(!g)return;
+  // Clean up any spin from previous gesture
+  if(vrm) vrm.scene.rotation.y=0;
+  curGest=g; gestTime=0;
+  showLabel(g.name);
+}
+function emoGest(emo){
+  const l=EMO_GESTS[emo]??[16,17,4];
+  playGest(l[Math.floor(Math.random()*l.length)]);
+}
+let lblTO;
+function showLabel(n){
+  const el=document.getElementById('alabel');
+  el.textContent=n; el.classList.add('on');
+  clearTimeout(lblTO); lblTO=setTimeout(()=>el.classList.remove('on'),2000);
+}
+
+/* ══════════════════════════════════════════════════════
+   MAIN ANIMATION LOOP
+══════════════════════════════════════════════════════ */
+const clock=new THREE.Clock();
+
+function bootLoop(){
+  const tick=()=>{
+    requestAnimationFrame(tick);
+    const dt=Math.min(clock.getDelta(),0.05);
+    const now=clock.elapsedTime;
+
+    if(!vrm){ renderer.render(scene,camera); return; }
+
+    /* ── Idle base ── */
+    idleTime+=dt; swapIn-=dt;
+    if(swapIn<=0&&!curGest){
+      curIdle=IDLES[Math.floor(Math.random()*IDLES.length)];
+      idleTime=0; swapIn=7+Math.random()*10;
+      showLabel(curIdle.name);
+    }
+    const idlePose=curIdle.fn(now);
+    // Extract body Y if provided
+    const pBodyY=idlePose.vrm_bodyY??0;
+    delete idlePose.vrm_bodyY;
+    applyPose(idlePose);
+
+    /* ── Choreo system (overrides normal gestures when active) ── */
+    if(choreoActive){
+      tickChoreo(dt);
+    } else {
+
+    /* ── Spontaneous random gestures ── */
+    if(!curGest && !isTalking && Math.random()<dt*0.038){
+      const pool=[4,5,14,15,16,17,18,9,21,22,27,
+                  38,39,40,44,47,49,50,51,52,53,54,55,56,57,59,60];
+      playGest(pool[Math.floor(Math.random()*pool.length)]);
+    }
+
+    /* ── Gesture overlay ── */
+    if(curGest){
+      gestTime+=dt;
+      const t=clamp(gestTime/curGest.dur,0,1);
+      const gp=curGest.fn(t);
+      const gBodyY=gp.vrm_bodyY??0; delete gp.vrm_bodyY;
+      applyPose(gp);
+      bodyY=lerp(bodyY, pBodyY+gBodyY, dt*8);
+      if(t>=1){ curGest=null; if(vrm) vrm.scene.rotation.y=0; }
+    } else {
+      bodyY=lerp(bodyY, pBodyY, dt*8);
+    }
+
+    /* ── Speaking gestures ── */
+    if(isTalking){
+      nextTalkGest-=dt;
+      if(nextTalkGest<=0){
+        const pool=[30,31,32,33,34,35,36,37,4,16,17];
+        playGest(pool[Math.floor(Math.random()*pool.length)]);
+        nextTalkGest=1.8+Math.random()*2.5;
+      }
+    }
+
+    } /* end !choreoActive */
+
+    tickBones(dt);
+
+    /* ── Body Y bob ── */
+    vrm.scene.position.y=lerp(vrm.scene.position.y??0, bodyY, dt*8);
+
+    /* ── Mouth ── */
+    const mTgt=isTalking?clamp(0.25+S(now*14)*.22+S(now*23)*.09,0,1):0;
+    mouthV=lerp(mouthV,mTgt,dt*20);
+    setExpr('aa',mouthV);
+    setExpr('oh',mouthV*.28);
+    setExpr('ih',mouthV*.14);
+
+    /* ── Blink ── */
+    blinkT-=dt;
+    if(blinkT<=0&&!isBlinking){isBlinking=true;blinkPh=0;}
+    if(isBlinking){
+      blinkPh+=dt*9;
+      const bv=blinkPh<PI?S(blinkPh):0;
+      setExpr('blink',bv); setExpr('blinkLeft',bv); setExpr('blinkRight',bv);
+      if(blinkPh>=PI){isBlinking=false;blinkT=2.5+Math.random()*3.5;}
+    }
+
+    /* ── Expressions lerp ── */
+    ALL_EX.forEach(k=>{
+      exC[k]=lerp(exC[k]??0,exT[k]??0,dt*3.5);
+      setExpr(k,exC[k]);
+    });
+
+    /* ── Subtle eye movement ── */
+    const eyeX=S(now*.63)*.010, eyeY=S(now*.42)*.007;
+    const le=boneNode('leftEye'), re=boneNode('rightEye');
+    if(le){le.rotation.x=eyeX;le.rotation.y=eyeY;}
+    if(re){re.rotation.x=eyeX;re.rotation.y=eyeY;}
+
+    vrm.update(dt);
+    renderer.render(scene,camera);
+  };
+  tick();
+}
+
+/* ══════════════════════════════════════════════════════
+   CHAT UI
+══════════════════════════════════════════════════════ */
+const msgsEl=document.getElementById('msgs');
+const typingEl=document.getElementById('typing');
+const inputEl=document.getElementById('uinput');
+const sendBtn=document.getElementById('btn-send');
+const micBtn=document.getElementById('btn-mic');
+
+function showToast(msg,dur=4000){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('on');
+  setTimeout(()=>el.classList.remove('on'),dur);
+}
+
+function addMsg(role,text){
+  const d=document.createElement('div'); d.className=`msg ${role}`;
+  const now=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  d.innerHTML=`<div class="bubble">${text.replace(/</g,'&lt;').replace(/\n/g,'<br>')}</div><div class="meta">${role==='ai'?'RizzAI':'You'} · ${now}</div>`;
+  msgsEl.insertBefore(d,typingEl);
+  msgsEl.scrollTop=msgsEl.scrollHeight;
+}
+
+function setTyping(on){
+  typingEl.classList.toggle('on',on);
+  sendBtn.disabled=on;
+  msgsEl.scrollTop=msgsEl.scrollHeight;
+}
+
+/* ══════════════════════════════════════════════════════
+   ██████████████████████████████████████████████████
+   COMMAND SYSTEM
+   Detects keywords in user messages and plays
+   special choreographed animation sequences.
+   Each command has multiple variants — picked
+   randomly so it never looks the same twice.
+   ██████████████████████████████████████████████████
+══════════════════════════════════════════════════════ */
+
+/* ── Choreography engine ──
+   A "choreo" is an array of steps:
+   { fn, dur, expr?, emo? }
+   Steps play back-to-back automatically.
+   While a choreo is running, normal idle/gesture
+   scheduling is paused.
+*/
+let choreoQueue   = [];   // array of steps remaining
+let choreoActive  = false;
+let choreoStepT   = 0;    // elapsed time in current step
+let choreoStep    = null; // current step
+
+function runChoreo(steps){
+  // stop any current gesture/choreo cleanly
+  if(vrm) vrm.scene.rotation.y = 0;
+  curGest      = null;
+  choreoQueue  = [...steps];
+  choreoActive = true;
+  choreoStep   = null;
+  choreoStepT  = 0;
+  swapIn       = 999; // pause idle swapping
+  _nextChoreoStep();
+}
+
+function _nextChoreoStep(){
+  if(choreoQueue.length === 0){
+    choreoActive = false;
+    choreoStep   = null;
+    swapIn       = 2; // resume idle soon
+    if(vrm) vrm.scene.rotation.y = 0;
+    return;
+  }
+  choreoStep  = choreoQueue.shift();
+  choreoStepT = 0;
+  if(choreoStep.emo)   applyEmo(choreoStep.emo);
+  if(choreoStep.expr)  exT = {...choreoStep.expr};
+  if(choreoStep.label) showLabel(choreoStep.label);
+}
+
+// Hook into the main loop — call this every frame
+function tickChoreo(dt){
+  if(!choreoActive || !choreoStep) return;
+  choreoStepT += dt;
+  const t = clamp(choreoStepT / choreoStep.dur, 0, 1);
+  const p = choreoStep.fn(t);
+  const by = p.vrm_bodyY ?? 0; delete p.vrm_bodyY;
+  applyPose(p);
+  bodyY = lerp(bodyY, by, dt*8);
+  if(t >= 1) _nextChoreoStep();
+}
+
+/* ── Dance sequence builders ── */
+// Each dance has 5-8 steps that chain together
+// creating a full choreography
+
+// Dance 1: Pop idol bounce dance
+function buildDance_pop(){
+  const S2=Math.sin, PI2=Math.PI;
+  const steps=[];
+  // intro — arms out
+  steps.push({ label:'Pop Dance ★', dur:1.0, emo:'excited', fn:t=>{
+    const c=S2(t*PI2*.5);
+    return { spine:[0.012-c*.03,0,0], head:[-c*.05,0,0],
+      leftUpperArm:arm('L',c*.55,c*.20,0.06), rightUpperArm:arm('R',c*.55,c*.20,0.06),
+      leftLowerArm:[0.10+c*.10,0,0.04], rightLowerArm:[0.10+c*.10,0,-0.04],
+      ...fingers('L','open'), ...fingers('R','open') };
+  }});
+  // bounce left
+  steps.push({ dur:0.6, fn:t=>{
+    const b=Math.abs(S2(t*PI2*2))*.022;
+    return { hips:[0,b*8,S2(t*PI2*2)*.015], spine:[0.012+b,0,S2(t*PI2*2)*.02],
+      leftUpperArm:arm('L',0.55+S2(t*PI2*2)*.12,0.20,0.06), rightUpperArm:arm('R',0.55-S2(t*PI2*2)*.12,0.20,0.06),
+      leftLowerArm:[0.20,0,0.04], rightLowerArm:[0.20,0,-0.04],
+      head:[0.010,S2(t*PI2*2)*.06,0], vrm_bodyY:b*.3,
+      ...fingers('L','open'), ...fingers('R','open') };
+  }});
+  // arm pump right
+  steps.push({ dur:0.5, fn:t=>{
+    const b=Math.abs(S2(t*PI2*1.5))*.018;
+    return { hips:[0,b*6,-S2(t*PI2*1.5)*.012], spine:[0.012+b,0,-S2(t*PI2*1.5)*.018],
+      rightUpperArm:arm('R',0.70+S2(t*PI2*1.5)*.15,0.25,0.06),
+      leftUpperArm:arm('L',0.30,0.15,0.06),
+      rightLowerArm:[0.24+S2(t*PI2*1.5)*.08,0,-0.04],
+      leftLowerArm:[0.16,0,0.04],
+      head:[0.010,S2(t*PI2*1.5)*.08,0], vrm_bodyY:b*.3,
+      ...fingers('L','open'), ...fingers('R','open') };
+  }});
+  // cross arms bounce
+  steps.push({ dur:0.7, fn:t=>{
+    const b=Math.abs(S2(t*PI2*2))*.016, cross=S2(t*PI2*.5)*.6;
+    return { spine:[0.012+b,-S2(t*PI2*2)*.015,0], hips:[0,0,S2(t*PI2*2)*.01],
+      leftUpperArm:arm('L',0.45+cross*.12,0.15+cross*.10,0.06),
+      rightUpperArm:arm('R',0.45+cross*.12,0.15+cross*.10,0.06),
+      leftLowerArm:[0.22+cross*.14,0,0.04+cross*.05],
+      rightLowerArm:[0.22+cross*.14,0,-0.04-cross*.05],
+      head:[0.010,S2(t*PI2*2)*.05,0], vrm_bodyY:b*.25,
+      ...fingers('L','peace'), ...fingers('R','peace') };
+  }});
+  // jump both arms up
+  steps.push({ dur:0.8, fn:t=>{
+    const up=S2(t*PI2*.5)*.90, b=S2(t*PI2)*.020;
+    return { spine:[0.012-up*.04,0,0], head:[-up*.06,0,0],
+      leftUpperArm:arm('L',up,0.15,0.06), rightUpperArm:arm('R',up,0.15,0.06),
+      leftLowerArm:[up*.08,0,0.04], rightLowerArm:[up*.08,0,-0.04],
+      vrm_bodyY:S2(t*PI2)*.018,
+      ...fingers('L','open'), ...fingers('R','open') };
+  }});
+  // outro pose — peace signs
+  steps.push({ dur:1.2, emo:'happy', fn:t=>{
+    const c=S2(t*PI2*.5);
+    return { spine:[0.012-c*.02,0,0], head:[-c*.04,c*.06,0],
+      leftUpperArm:arm('L',0.78*c,0.08*c,0.06), rightUpperArm:arm('R',0.72*c,0.06*c,0.06),
+      leftLowerArm:[0.10+c*.04,0,0.04], rightLowerArm:[0.10+c*.04,0,-0.04],
+      leftHand:[0,c*.07,-0.03], rightHand:[0,c*.07,0.03],
+      ...fingers('L','peace'), ...fingers('R','peace') };
+  }});
+  return steps;
+}
+
+// Dance 2: Idol wave dance (like a concert)
+function buildDance_idol(){
+  const S2=Math.sin;
+  return [
+    { label:'Idol Dance ✨', dur:0.8, emo:'excited', fn:t=>{
+      const c=env(t);
+      return { spine:[0.012,0,0], leftUpperArm:arm('L',c*.85,c*.12,0.06),
+        rightUpperArm:arm('R',0.30*c,0,0.06),
+        leftLowerArm:[0.10+c*.08,0,0.04], leftHand:[S2(t*PI*4)*.12*c,0,-0.03],
+        rightLowerArm:[0.15,0,-0.04], head:[0.010,-c*.08,0],
+        ...fingers('L','wave'), ...fingers('R','open') };
+    }},
+    { dur:0.7, fn:t=>{
+      const sw=S2(t*PI*1.5)*.020;
+      return { hips:[0,sw*8,0], spine:[0.012,-sw*5,sw*7],
+        leftUpperArm:arm('L',0.85,0.12,0.06), rightUpperArm:arm('R',0.30,0,0.06),
+        leftLowerArm:[0.18,0,0.04], leftHand:[S2(t*PI*3)*.15,0,-0.03],
+        head:[0.010,sw*40,0], vrm_bodyY:Math.abs(sw)*.4,
+        ...fingers('L','wave'), ...fingers('R','open') };
+    }},
+    { dur:0.6, fn:t=>{
+      // Switch arms
+      const c=env(t);
+      return { spine:[0.012,0,0], rightUpperArm:arm('R',0.85*c,0.12*c,0.06),
+        leftUpperArm:arm('L',0.30*c,0,0.06),
+        rightLowerArm:[0.10+c*.08,0,-0.04], rightHand:[S2(t*PI*4)*.12*c,0,0.03],
+        leftLowerArm:[0.15,0,0.04], head:[0.010,c*.08,0],
+        ...fingers('R','wave'), ...fingers('L','open') };
+    }},
+    { dur:0.8, fn:t=>{
+      const sw=S2(t*PI*1.5)*.020;
+      return { hips:[0,sw*8,0], spine:[0.012,-sw*5,sw*7],
+        rightUpperArm:arm('R',0.85,0.12,0.06), leftUpperArm:arm('L',0.30,0,0.06),
+        rightLowerArm:[0.18,0,-0.04], rightHand:[S2(t*PI*3)*.15,0,0.03],
+        head:[0.010,sw*40,0], vrm_bodyY:Math.abs(sw)*.4,
+        ...fingers('R','wave'), ...fingers('L','open') };
+    }},
+    { dur:0.9, emo:'happy', fn:t=>{
+      // Both arms up final pose
+      const c=env(t);
+      return { spine:[0.012-c*.03,0,0],
+        leftUpperArm:arm('L',c*.90,c*.18,0.06), rightUpperArm:arm('R',c*.90,c*.18,0.06),
+        leftLowerArm:[c*.06,0,0.04], rightLowerArm:[c*.06,0,-0.04],
+        head:[-c*.05,0,0], vrm_bodyY:S2(t*PI)*.015,
+        ...fingers('L','open'), ...fingers('R','open') };
+    }},
+  ];
+}
+
+// Dance 3: Spin dance
+function buildDance_spin(){
+  const S2=Math.sin;
+  return [
+    { label:'Spin Dance 💫', dur:0.5, emo:'excited', fn:t=>{
+      const c=env(t);
+      return { spine:[0.012-c*.02,0,0],
+        leftUpperArm:arm('L',c*.60,c*.22,0.06), rightUpperArm:arm('R',c*.60,c*.22,0.06),
+        leftLowerArm:[c*.05,0,0.04], rightLowerArm:[c*.05,0,-0.04],
+        ...fingers('L','open'), ...fingers('R','open') };
+    }},
+    { dur:1.2, fn:t=>{
+      if(vrm) vrm.scene.rotation.y = t * Math.PI * 2;
+      return { spine:[0.012-0.03,0,0],
+        leftUpperArm:arm('L',0.60,0.22,0.06), rightUpperArm:arm('R',0.60,0.22,0.06),
+        leftLowerArm:[0.05,0,0.04], rightLowerArm:[0.05,0,-0.04],
+        head:[-0.05,0,0],
+        ...fingers('L','open'), ...fingers('R','open') };
+    }},
+    { dur:0.4, fn:t=>{
+      // Land — reset rotation
+      if(vrm) vrm.scene.rotation.y = Math.PI * 2 * (1-t);
+      const c=env(t);
+      return { spine:[0.012,0,0],
+        leftUpperArm:arm('L',0.60*(1-t),0.22*(1-t),0.06), rightUpperArm:arm('R',0.60*(1-t),0.22*(1-t),0.06),
+        ...fingers('L','open'), ...fingers('R','open') };
+    }},
+    { dur:1.2, fn:t=>{
+      // Double spin
+      if(vrm) vrm.scene.rotation.y = t * Math.PI * 2;
+      const bob=Math.abs(S2(t*PI*4))*.012;
+      return { spine:[0.012-0.025,0,0],
+        leftUpperArm:arm('L',0.55,0.18,0.06), rightUpperArm:arm('R',0.55,0.18,0.06),
+        leftLowerArm:[0.06,0,0.04], rightLowerArm:[0.06,0,-0.04],
+        vrm_bodyY:bob, ...fingers('L','peace'), ...fingers('R','peace') };
+    }},
+    { dur:0.8, emo:'happy', fn:t=>{
+      if(vrm) vrm.scene.rotation.y = 0;
+      const c=env(t);
+      return { spine:[0.012,0,0], head:[0.010,-c*.06,c*.06],
+        leftUpperArm:arm('L',0.75*c,0.08*c,0.06), rightUpperArm:arm('R',0.68*c,0.06*c,0.06),
+        leftHand:[0,c*.06,-0.03], rightHand:[0,c*.06,0.03],
+        ...fingers('L','peace'), ...fingers('R','peace') };
+    }},
+  ];
+}
+
+// Dance 4: Shuffle dance
+function buildDance_shuffle(){
+  const S2=Math.sin;
+  return [
+    { label:'Shuffle Dance 🎵', dur:0.6, emo:'excited', fn:t=>{
+      const c=env(t);
+      return { hips:[0,c*.04,0], spine:[0.012,0,c*.03],
+        leftUpperArm:arm('L',c*.35,c*.08,0.06), rightUpperArm:arm('R',c*.35,c*.08,0.06),
+        ...fingers('L','open'), ...fingers('R','open') };
+    }},
+    { dur:0.5, fn:t=>{
+      const kick=S2(t*PI)*.04;
+      return { hips:[0,kick*4,kick*3], spine:[0.012,-kick*2,kick*4],
+        leftUpperArm:arm('L',0.35+kick*3,0.08,0.06), rightUpperArm:arm('R',0.35-kick*3,0.08,0.06),
+        leftLowerArm:[0.15,0,0.04], rightLowerArm:[0.15,0,-0.04],
+        head:[0.010,kick*10,0], vrm_bodyY:Math.abs(kick)*.3,
+        ...fingers('L','open'), ...fingers('R','open') };
+    }},
+    { dur:0.5, fn:t=>{
+      const kick=-S2(t*PI)*.04;
+      return { hips:[0,kick*4,kick*3], spine:[0.012,-kick*2,kick*4],
+        leftUpperArm:arm('L',0.35-kick*3,0.08,0.06), rightUpperArm:arm('R',0.35+kick*3,0.08,0.06),
+        leftLowerArm:[0.15,0,0.04], rightLowerArm:[0.15,0,-0.04],
+        head:[0.010,kick*10,0], vrm_bodyY:Math.abs(kick)*.3,
+        ...fingers('L','open'), ...fingers('R','open') };
+    }},
+    { dur:0.5, fn:t=>{
+      const kick=S2(t*PI)*.04;
+      return { hips:[0,kick*4,kick*3], spine:[0.012,-kick*2,kick*4],
+        leftUpperArm:arm('L',0.35+kick*3,0.08,0.06), rightUpperArm:arm('R',0.35-kick*3,0.08,0.06),
+        leftLowerArm:[0.15,0,0.04], rightLowerArm:[0.15,0,-0.04],
+        head:[0.010,kick*10,0], vrm_bodyY:Math.abs(kick)*.3,
+        ...fingers('L','open'), ...fingers('R','open') };
+    }},
+    { dur:0.5, fn:t=>{
+      const kick=-S2(t*PI)*.04;
+      return { hips:[0,kick*4,kick*3], spine:[0.012,-kick*2,kick*4],
+        leftUpperArm:arm('L',0.35-kick*3,0.08,0.06), rightUpperArm:arm('R',0.35+kick*3,0.08,0.06),
+        leftLowerArm:[0.15,0,0.04], rightLowerArm:[0.15,0,-0.04],
+        head:[0.010,kick*10,0], vrm_bodyY:Math.abs(kick)*.3,
+        ...fingers('L','open'), ...fingers('R','open') };
+    }},
+    { dur:1.0, emo:'happy', fn:t=>{
+      const c=env(t);
+      return { spine:[0.012-c*.02,0,0], head:[-c*.04,0,0],
+        leftUpperArm:arm('L',c*.80,c*.16,0.06), rightUpperArm:arm('R',c*.80,c*.16,0.06),
+        leftLowerArm:[c*.06,0,0.04], rightLowerArm:[c*.06,0,-0.04],
+        vrm_bodyY:S2(t*PI)*.012,
+        ...fingers('L','open'), ...fingers('R','open') };
+    }},
+  ];
+}
+
+// Dance 5: Cute shy dance (swaying with finger guns)
+function buildDance_cute(){
+  const S2=Math.sin;
+  return [
+    { label:'Cute Dance 🌸', dur:0.8, emo:'shy', fn:t=>{
+      const c=env(t);
+      return { spine:[0.015+c*.015,0,c*.02], head:[0.020+c*.04,0,c*.06],
+        leftUpperArm:arm('L',c*.25,c*.10,0.06), rightUpperArm:arm('R',c*.25,c*.10,0.06),
+        leftLowerArm:[0.10+c*.12,0,0.04], rightLowerArm:[0.10+c*.12,0,-0.04],
+        ...fingers('L','loose'), ...fingers('R','loose') };
+    }},
+    { dur:0.6, fn:t=>{
+      const sw=S2(t*PI*1.8)*.018;
+      return { hips:[0,sw*6,0], spine:[0.025,-sw*3,sw*5+0.02],
+        leftUpperArm:arm('L',0.25+sw*4,0.10,0.06), rightUpperArm:arm('R',0.25-sw*4,0.10,0.06),
+        leftLowerArm:[0.22,0,0.04], rightLowerArm:[0.22,0,-0.04],
+        head:[0.025,sw*12,0.05], vrm_bodyY:Math.abs(sw)*.2,
+        ...fingers('L','loose'), ...fingers('R','loose') };
+    }},
+    { dur:0.6, fn:t=>{
+      const sw=-S2(t*PI*1.8)*.018;
+      return { hips:[0,sw*6,0], spine:[0.025,-sw*3,sw*5+0.02],
+        leftUpperArm:arm('L',0.25-sw*4,0.10,0.06), rightUpperArm:arm('R',0.25+sw*4,0.10,0.06),
+        leftLowerArm:[0.22,0,0.04], rightLowerArm:[0.22,0,-0.04],
+        head:[0.025,sw*12,0.05], vrm_bodyY:Math.abs(sw)*.2,
+        ...fingers('L','loose'), ...fingers('R','loose') };
+    }},
+    { dur:0.6, fn:t=>{
+      const sw=S2(t*PI*1.8)*.018;
+      return { hips:[0,sw*6,0], spine:[0.025,-sw*3,sw*5+0.02],
+        leftUpperArm:arm('L',0.25+sw*4,0.10,0.06), rightUpperArm:arm('R',0.25-sw*4,0.10,0.06),
+        leftLowerArm:[0.22,0,0.04], rightLowerArm:[0.22,0,-0.04],
+        head:[0.025,sw*12,0.05], vrm_bodyY:Math.abs(sw)*.2,
+        ...fingers('L','loose'), ...fingers('R','loose') };
+    }},
+    { dur:1.0, emo:'happy', fn:t=>{
+      const c=env(t);
+      return { spine:[0.012,0,0], head:[0.010,-c*.06,c*.06],
+        leftUpperArm:arm('L',0.70*c,0.08*c,0.06),
+        leftHand:[0,c*.06,-0.03],
+        rightUpperArm:arm('R',0,0,0.06), rightLowerArm:fore('R',0.10),
+        ...fingers('L','peace'), ...fingers('R','rest') };
+    }},
+  ];
+}
+
+// Dance 6: Robot/hip hop
+function buildDance_hiphop(){
+  const S2=Math.sin;
+  return [
+    { label:'Hip Hop 🎤', dur:0.5, emo:'excited', fn:t=>{
+      const c=env(t);
+      return { spine:[0.012,0,0],
+        leftUpperArm:arm('L',c*.45,c*.05,0.06), rightUpperArm:arm('R',c*.45,c*.05,0.06),
+        leftLowerArm:[0.10+c*.30,0,0.04], rightLowerArm:[0.10+c*.30,0,-0.04],
+        ...fingers('L','fist'), ...fingers('R','fist') };
+    }},
+    { dur:0.4, fn:t=>{
+      const b=env(t);
+      return { hips:[0,0,b*.02], spine:[0.012+b*.02,0,-b*.015],
+        leftUpperArm:arm('L',0.45,0.05,0.06), rightUpperArm:arm('R',0.65,0.05,0.06),
+        leftLowerArm:[0.40,0,0.04], rightLowerArm:[0.55,0,-0.04],
+        head:[0.010,b*.06,0], vrm_bodyY:b*.008,
+        ...fingers('L','fist'), ...fingers('R','fist') };
+    }},
+    { dur:0.4, fn:t=>{
+      const b=env(t);
+      return { hips:[0,0,-b*.02], spine:[0.012+b*.02,0,b*.015],
+        leftUpperArm:arm('L',0.65,0.05,0.06), rightUpperArm:arm('R',0.45,0.05,0.06),
+        leftLowerArm:[0.55,0,0.04], rightLowerArm:[0.40,0,-0.04],
+        head:[0.010,-b*.06,0], vrm_bodyY:b*.008,
+        ...fingers('L','fist'), ...fingers('R','fist') };
+    }},
+    { dur:0.4, fn:t=>{
+      const b=env(t);
+      return { hips:[0,0,b*.02], spine:[0.012+b*.02,0,-b*.015],
+        leftUpperArm:arm('L',0.45,0.05,0.06), rightUpperArm:arm('R',0.65,0.05,0.06),
+        leftLowerArm:[0.40,0,0.04], rightLowerArm:[0.55,0,-0.04],
+        head:[0.010,b*.06,0], vrm_bodyY:b*.008,
+        ...fingers('L','fist'), ...fingers('R','fist') };
+    }},
+    { dur:0.4, fn:t=>{
+      const b=env(t);
+      return { hips:[0,0,-b*.02], spine:[0.012+b*.02,0,b*.015],
+        leftUpperArm:arm('L',0.65,0.05,0.06), rightUpperArm:arm('R',0.45,0.05,0.06),
+        leftLowerArm:[0.55,0,0.04], rightLowerArm:[0.40,0,-0.04],
+        head:[0.010,-b*.06,0], vrm_bodyY:b*.008,
+        ...fingers('L','fist'), ...fingers('R','fist') };
+    }},
+    { dur:0.8, emo:'happy', fn:t=>{
+      const c=env(t);
+      return { spine:[0.012,0,0], head:[0.010,c*.04,0],
+        leftUpperArm:arm('L',c*.55,0.05,0.06), rightUpperArm:arm('R',c*.55,0.05,0.06),
+        leftLowerArm:[0.10+c*.30,0,0.04], rightLowerArm:[0.10+c*.30,0,-0.04],
+        vrm_bodyY:S2(t*PI)*.010,
+        ...fingers('L','fist'), ...fingers('R','fist') };
+    }},
+  ];
+}
+
+// All dance variants — picked randomly
+const DANCE_VARIANTS = [
+  buildDance_pop,
+  buildDance_idol,
+  buildDance_spin,
+  buildDance_shuffle,
+  buildDance_cute,
+  buildDance_hiphop,
+];
+let lastDanceIdx = -1;
+
+function getNextDance(){
+  // never repeat same dance twice in a row
+  let idx;
+  do { idx = Math.floor(Math.random()*DANCE_VARIANTS.length); }
+  while(idx === lastDanceIdx && DANCE_VARIANTS.length > 1);
+  lastDanceIdx = idx;
+  return DANCE_VARIANTS[idx]();
+}
+
+/* ── Command sequences for non-dance commands ── */
+function buildSeq_spin(){
+  return [
+    { label:'Spinning 💫', dur:0.4, emo:'excited', fn:t=>{
+      const c=env(t);
+      return { leftUpperArm:arm('L',c*.60,c*.20,0.06), rightUpperArm:arm('R',c*.60,c*.20,0.06),
+        spine:[0.012-c*.02,0,0], ...fingers('L','open'), ...fingers('R','open') };
+    }},
+    { dur:1.0, fn:t=>{
+      if(vrm) vrm.scene.rotation.y = t*PI*2;
+      return { leftUpperArm:arm('L',0.60,0.20,0.06), rightUpperArm:arm('R',0.60,0.20,0.06),
+        spine:[0.012-0.02,0,0], ...fingers('L','open'), ...fingers('R','open') };
+    }},
+    { dur:1.2, fn:t=>{
+      if(vrm) vrm.scene.rotation.y = t*PI*2;
+      return { leftUpperArm:arm('L',0.55,0.18,0.06), rightUpperArm:arm('R',0.55,0.18,0.06),
+        vrm_bodyY:Math.abs(Math.sin(t*PI*4))*.012,
+        ...fingers('L','peace'), ...fingers('R','peace') };
+    }},
+    { dur:0.5, emo:'happy', fn:t=>{
+      if(vrm) vrm.scene.rotation.y=0;
+      const c=env(t);
+      return { leftUpperArm:arm('L',0.55*(1-c),.18*(1-c),0.06), rightUpperArm:arm('R',0.55*(1-c),.18*(1-c),0.06),
+        ...fingers('L','peace'), ...fingers('R','peace') };
+    }},
+  ];
+}
+
+function buildSeq_wave(){
+  return [
+    { label:'Waving~ 👋', dur:0.5, emo:'greeting', fn:t=>{
+      const c=env(t);
+      return { leftUpperArm:arm('L',c*.90,c*.10,0.06), leftLowerArm:[0.10+c*.08,0,0.04-c*.05],
+        rightUpperArm:arm('R',0,0,0.06), head:[0.010,-c*.10,0],
+        ...fingers('L','wave'), ...fingers('R','rest') };
+    }},
+    { dur:0.3, fn:t=>({ leftUpperArm:arm('L',0.90,0.10,0.06), leftHand:[Math.sin(t*PI*2)*.25,0,-0.03],
+      leftLowerArm:[0.18,0,-0.02], rightUpperArm:arm('R',0,0,0.06), head:[0.010,-0.10,0],
+      ...fingers('L','wave'), ...fingers('R','rest') })},
+    { dur:0.3, fn:t=>({ leftUpperArm:arm('L',0.90,0.10,0.06), leftHand:[Math.sin(t*PI*2+PI)*.25,0,-0.03],
+      leftLowerArm:[0.18,0,-0.02], rightUpperArm:arm('R',0,0,0.06), head:[0.010,-0.10,0],
+      ...fingers('L','wave'), ...fingers('R','rest') })},
+    { dur:0.3, fn:t=>({ leftUpperArm:arm('L',0.90,0.10,0.06), leftHand:[Math.sin(t*PI*2)*.25,0,-0.03],
+      leftLowerArm:[0.18,0,-0.02], rightUpperArm:arm('R',0,0,0.06), head:[0.010,-0.10,0],
+      ...fingers('L','wave'), ...fingers('R','rest') })},
+    { dur:0.3, fn:t=>({ leftUpperArm:arm('L',0.90,0.10,0.06), leftHand:[Math.sin(t*PI*2+PI)*.25,0,-0.03],
+      leftLowerArm:[0.18,0,-0.02], rightUpperArm:arm('R',0,0,0.06), head:[0.010,-0.10,0],
+      ...fingers('L','wave'), ...fingers('R','rest') })},
+    { dur:0.8, fn:t=>{
+      const c=env(t);
+      return { leftUpperArm:arm('L',0.90*(1-c),0.10*(1-c),0.06), leftLowerArm:fore('L',0.10),
+        rightUpperArm:arm('R',0,0,0.06), head:[0.010,0,0],
+        ...fingers('L','rest'), ...fingers('R','rest') };
+    }},
+  ];
+}
+
+function buildSeq_jump(){
+  return [
+    { label:'Jumping! ⬆️', dur:0.3, emo:'excited', fn:t=>{
+      const c=env(t);
+      return { spine:[0.012-c*.04,0,0], leftUpperArm:arm('L',c*.55,c*.18,0.06), rightUpperArm:arm('R',c*.55,c*.18,0.06),
+        ...fingers('L','open'), ...fingers('R','open') };
+    }},
+    { dur:0.25, fn:t=>({ spine:[0.012-0.04,0,0],
+      leftUpperArm:arm('L',0.55,0.18,0.06), rightUpperArm:arm('R',0.55,0.18,0.06),
+      vrm_bodyY:Math.sin(t*PI)*.045, ...fingers('L','open'), ...fingers('R','open') })},
+    { dur:0.2, fn:t=>({ spine:[0.012-0.04,0,0],
+      leftUpperArm:arm('L',0.55,0.18,0.06), rightUpperArm:arm('R',0.55,0.18,0.06),
+      vrm_bodyY:0.045-t*.045, ...fingers('L','open'), ...fingers('R','open') })},
+    { dur:0.25, fn:t=>({ spine:[0.012-0.04,0,0],
+      leftUpperArm:arm('L',0.55,0.18,0.06), rightUpperArm:arm('R',0.55,0.18,0.06),
+      vrm_bodyY:Math.sin(t*PI)*.035, ...fingers('L','open'), ...fingers('R','open') })},
+    { dur:0.2, fn:t=>({ spine:[0.012-0.04,0,0],
+      leftUpperArm:arm('L',0.55,0.18,0.06), rightUpperArm:arm('R',0.55,0.18,0.06),
+      vrm_bodyY:0.035-t*.035, ...fingers('L','open'), ...fingers('R','open') })},
+    { dur:0.25, fn:t=>({ spine:[0.012-0.04,0,0],
+      leftUpperArm:arm('L',0.55,0.18,0.06), rightUpperArm:arm('R',0.55,0.18,0.06),
+      vrm_bodyY:Math.sin(t*PI)*.022, ...fingers('L','open'), ...fingers('R','open') })},
+    { dur:0.6, emo:'happy', fn:t=>{
+      const c=env(t);
+      return { spine:[0.012,0,0],
+        leftUpperArm:arm('L',0.55*(1-c),0.18*(1-c),0.06), rightUpperArm:arm('R',0.55*(1-c),0.18*(1-c),0.06),
+        ...fingers('L','open'), ...fingers('R','open') };
+    }},
+  ];
+}
+
+function buildSeq_clap(){
+  const steps=[];
+  steps.push({ label:'Clapping! 👏', dur:0.4, emo:'excited', fn:t=>{
+    const c=env(t);
+    return { spine:[0.012-c*.02,0,0], leftUpperArm:arm('L',0.44*c,0.16*c,0.06), rightUpperArm:arm('R',0.44*c,0.16*c,0.06),
+      leftLowerArm:[0.10+c*.33,0,0.04], rightLowerArm:[0.10+c*.33,0,-0.04],
+      ...fingers('L','open'), ...fingers('R','open') };
+  }});
+  for(let i=0;i<6;i++){
+    steps.push({ dur:0.25, fn:t=>{
+      const cl=Math.abs(Math.sin(t*PI));
+      return { spine:[0.012-cl*.02,0,0],
+        leftUpperArm:arm('L',0.44,0.16,0.06), rightUpperArm:arm('R',0.44,0.16,0.06),
+        leftLowerArm:[0.43+cl*.02,0,0.04*cl], rightLowerArm:[0.43+cl*.02,0,-0.04*cl],
+        leftHand:[0,0,0.03*cl], rightHand:[0,0,-0.03*cl], vrm_bodyY:cl*.005,
+        ...fingers('L','open'), ...fingers('R','open') };
+    }});
+  }
+  steps.push({ dur:0.8, emo:'happy', fn:t=>{
+    const c=env(t);
+    return { spine:[0.012,0,0],
+      leftUpperArm:arm('L',0.44*(1-c),0.16*(1-c),0.06), rightUpperArm:arm('R',0.44*(1-c),0.16*(1-c),0.06),
+      leftLowerArm:fore('L',0.10), rightLowerArm:fore('R',0.10),
+      ...fingers('L','open'), ...fingers('R','open') };
+  }});
+  return steps;
+}
+
+function buildSeq_bow(){
+  return [
+    { label:'Bowing 🙇', dur:0.6, emo:'greeting', fn:t=>{
+      const c=env(t);
+      return { spine:[0.012+c*.24,0,0], chest:[0.006+c*.16,0,0],
+        upperChest:[c*.10,0,0], neck:[0.010+c*.09,0,0], head:[0.010+c*.08,0,0],
+        leftUpperArm:arm('L',c*.06,0,0.06), rightUpperArm:arm('R',c*.06,0,0.06),
+        leftLowerArm:fore('L',0.10), rightLowerArm:fore('R',0.10),
+        ...fingers('L','open'), ...fingers('R','open') };
+    }},
+    { dur:0.8, fn:()=>({ spine:[0.012+0.24,0,0], chest:[0.006+0.16,0,0],
+      upperChest:[0.10,0,0], neck:[0.010+0.09,0,0], head:[0.010+0.08,0,0],
+      leftUpperArm:arm('L',0.06,0,0.06), rightUpperArm:arm('R',0.06,0,0.06),
+      ...fingers('L','open'), ...fingers('R','open') })},
+    { dur:0.6, fn:t=>{
+      const c=1-env(t);
+      return { spine:[0.012+c*.24,0,0], chest:[0.006+c*.16,0,0],
+        upperChest:[c*.10,0,0], neck:[0.010+c*.09,0,0], head:[0.010+c*.08,0,0],
+        leftUpperArm:arm('L',c*.06,0,0.06), rightUpperArm:arm('R',c*.06,0,0.06),
+        ...fingers('L','open'), ...fingers('R','open') };
+    }},
+    { dur:0.6, emo:'happy', fn:t=>{
+      const c=env(t);
+      return { spine:[0.012,0,0], head:[0.010,-c*.06,c*.06],
+        leftUpperArm:arm('L',0.70*c,0.08*c,0.06),
+        leftHand:[0,c*.06,-0.03], rightUpperArm:arm('R',0,0,0.06),
+        ...fingers('L','peace'), ...fingers('R','rest') };
+    }},
+  ];
+}
+
+function buildSeq_stretch(){
+  return [
+    { label:'Stretching 🙆', dur:0.8, emo:'happy', fn:t=>{
+      const c=env(t);
+      return { spine:[0.012-c*.035,0,0], head:[-c*.05,0,0],
+        leftUpperArm:arm('L',PI*.46*c,c*.12,0.06), rightUpperArm:arm('R',PI*.46*c,c*.12,0.06),
+        leftLowerArm:[c*.07,0,0.04], rightLowerArm:[c*.07,0,-0.04],
+        ...fingers('L','open'), ...fingers('R','open') };
+    }},
+    { dur:1.2, fn:()=>({ spine:[0.012-0.035,0,0], head:[-0.05,0,0],
+      leftUpperArm:arm('L',PI*.46,0.12,0.06), rightUpperArm:arm('R',PI*.46,0.12,0.06),
+      leftLowerArm:[0.07,0,0.04], rightLowerArm:[0.07,0,-0.04],
+      ...fingers('L','open'), ...fingers('R','open') })},
+    { dur:0.6, fn:t=>{
+      const c=env(t);
+      return { spine:[0.012-0.035,0,0],
+        leftUpperArm:arm('L',PI*.46,0.12+c*.12,0.06), rightUpperArm:arm('R',PI*.46,0.12+c*.12,0.06),
+        leftLowerArm:[0.07-c*.04,0,0.04], rightLowerArm:[0.07-c*.04,0,-0.04],
+        ...fingers('L','open'), ...fingers('R','open') };
+    }},
+    { dur:0.8, emo:'happy', fn:t=>{
+      const c=env(t);
+      return { spine:[0.012-0.035*(1-c),0,0], head:[-0.05*(1-c),0,0],
+        leftUpperArm:arm('L',PI*.46*(1-c),0.12*(1-c),0.06), rightUpperArm:arm('R',PI*.46*(1-c),0.12*(1-c),0.06),
+        ...fingers('L','open'), ...fingers('R','open') };
+    }},
+  ];
+}
+
+function buildSeq_happy(){
+  return [
+    { label:'So Happy!! ⭐', dur:0.4, emo:'excited', fn:t=>{
+      const c=env(t);
+      return { spine:[0.012-c*.03,0,0],
+        leftUpperArm:arm('L',c*.85,c*.20,0.06), rightUpperArm:arm('R',c*.85,c*.20,0.06),
+        leftLowerArm:[c*.05,0,0.04], rightLowerArm:[c*.05,0,-0.04],
+        vrm_bodyY:Math.sin(t*PI)*.012, ...fingers('L','open'), ...fingers('R','open') };
+    }},
+    { dur:0.3, fn:t=>({ spine:[0.012-0.03,0,0],
+      leftUpperArm:arm('L',0.85,0.20,0.06), rightUpperArm:arm('R',0.85,0.20,0.06),
+      vrm_bodyY:Math.abs(Math.sin(t*PI*3))*.018, ...fingers('L','open'), ...fingers('R','open') })},
+    { dur:0.3, fn:t=>({ spine:[0.012-0.03,0,0],
+      leftUpperArm:arm('L',0.85,0.20,0.06), rightUpperArm:arm('R',0.85,0.20,0.06),
+      vrm_bodyY:Math.abs(Math.sin(t*PI*3))*.018, ...fingers('L','peace'), ...fingers('R','peace') })},
+    { dur:0.3, fn:t=>({ spine:[0.012-0.03,0,0],
+      leftUpperArm:arm('L',0.85,0.20,0.06), rightUpperArm:arm('R',0.85,0.20,0.06),
+      vrm_bodyY:Math.abs(Math.sin(t*PI*3))*.018, ...fingers('L','open'), ...fingers('R','open') })},
+    { dur:0.8, emo:'happy', fn:t=>{
+      const c=env(t);
+      return { spine:[0.012-0.03*(1-c),0,0],
+        leftUpperArm:arm('L',0.85*(1-c),0.20*(1-c),0.06), rightUpperArm:arm('R',0.85*(1-c),0.20*(1-c),0.06),
+        ...fingers('L','peace'), ...fingers('R','peace') };
+    }},
+  ];
+}
+
+/* ══════════════════════════════════════════════════════
+   COMMAND DETECTOR
+   Returns { isCommand, sequence, response }
+   Checks message for known keywords and fires
+   the matching choreography + reply.
+══════════════════════════════════════════════════════ */
+
+// Response variants per command (randomly picked)
+const CMD_RESPONSES = {
+  dance: [
+    'Yatta~ time to show off my moves!',
+    'Ehh, you want me to dance? Okay okay, here I go~!',
+    'Dance time! Don\'t laugh if I trip, ne~',
+    'Kyaa~ okay watch this! I practiced super hard!',
+    'A-ano, I might be a little rusty but... here goes nothing~!',
+  ],
+  spin: [
+    'Wheee~!! Watch me spin!',
+    'Spinning spinning spinning~ dizzy but happy!',
+    'Okay hold on, here comes the spin move!',
+    'Kyaa~ spinning like a top! Wheee~',
+  ],
+  wave: [
+    'Hellooo~! Waving at you with all my heart!',
+    'Hi hi hi! *waves super enthusiastically*',
+    'Ne ne, see? I wave the cutest, right~?',
+    'Yatta! A-ano, hello to you too~!',
+  ],
+  jump: [
+    'Yatta yatta! Jump time!! Weeee~!',
+    'Here I go! Jumping with all my energy~!',
+    'Ehh, okay okay! Jump jump jump~!',
+    'Kyaa~ I can jump so high! Watch watch watch!',
+  ],
+  clap: [
+    'Yay yay yay! *claps excitedly*',
+    'Clapping for you because you\'re amazing~!',
+    'Ehh, applause time! *clap clap clap*',
+    'Woo-hoo! *claps as hard as possible*',
+  ],
+  bow: [
+    'Hai~ thank you, thank you! *bows gracefully*',
+    'A-ano... *takes a deep respectful bow*',
+    'Thank you so much~! *bows with a big smile*',
+    'Yatta, bowing time! Very formal, very cute~',
+  ],
+  stretch: [
+    'Mmm~ stretching out all the stiffness~',
+    'Ahh that feels so good! *stretches arms way up*',
+    'Ne ne, stretching time! I was getting a little stiff~',
+    'Yawn~ okay stretching now! Arms up up up~!',
+  ],
+  happy: [
+    'Kyaa kyaa~!! I am SO happy right now!!',
+    'Yatta yatta yatta!! This is the best feeling~!',
+    'Ehh?! So much happiness I might explode~!',
+    'Happy happy happy~! Everything is wonderful!',
+  ],
+};
+
+function getRandom(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+const COMMAND_MAP = [
+  { keywords:['dance','dancing','boogie','groove','moves','twerk','perform'],
+    build: ()=>getNextDance(),
+    type:'dance' },
+  { keywords:['spin','twirl','rotate','pirouette','turn around','spinning'],
+    build: buildSeq_spin, type:'spin' },
+  { keywords:['wave','hi','hello','greet','bye','goodbye','see ya','ciao'],
+    build: buildSeq_wave, type:'wave' },
+  { keywords:['jump','hop','leap','bounce','jumping'],
+    build: buildSeq_jump, type:'jump' },
+  { keywords:['clap','clapping','applaud','bravo','woohoo'],
+    build: buildSeq_clap, type:'clap' },
+  { keywords:['bow','curtsy','curtsey','namaste','respect'],
+    build: buildSeq_bow, type:'bow' },
+  { keywords:['stretch','yawn','wake up','loosen'],
+    build: buildSeq_stretch, type:'stretch' },
+  { keywords:['happy','celebrate','yay','yatta','wohoo','woohoo','hurray','hooray','excited'],
+    build: buildSeq_happy, type:'happy' },
+];
+
+function detectCommand(text){
+  const lower = text.toLowerCase();
+  for(const cmd of COMMAND_MAP){
+    if(cmd.keywords.some(kw => lower.includes(kw))){
+      return cmd;
+    }
+  }
+  return null;
+}
+
+async function sendMsg(text){
+  text=text.trim(); if(!text)return;
+  inputEl.value=''; inputEl.style.height='';
+  addMsg('user',text);
+
+  /* ── Check for animation command first ── */
+  const cmd = detectCommand(text);
+  if(cmd){
+    setTyping(false);
+    const response = getRandom(CMD_RESPONSES[cmd.type]);
+    addMsg('ai', response);
+    applyEmo('excited');
+    // Play choreo
+    runChoreo(cmd.build());
+    // Speak response
+    await speakEL(
+      response,
+      ()=>{ isTalking=true; nextTalkGest=0; document.getElementById('wave').classList.add('on'); },
+      ()=>{ isTalking=false; document.getElementById('wave').classList.remove('on'); setTTSStatus(''); }
+    );
+    return;
+  }
+
+  /* ── Normal AI chat ── */
+  setTyping(true);
+  applyEmo('listening');
+  emoGest('listening');
+
+  try{
+    const {reply,emo}=await callAI(text);
+    setTyping(false);
+    addMsg('ai',reply);
+    applyEmo(emo);
+    emoGest(emo);
+
+    await speakEL(
+      reply,
+      ()=>{ isTalking=true; nextTalkGest=0; document.getElementById('wave').classList.add('on'); },
+      ()=>{ isTalking=false; document.getElementById('wave').classList.remove('on'); applyEmo('listening'); setTTSStatus(''); }
+    );
+  }catch(e){
+    setTyping(false);
+    console.error('Error:',e);
+    showToast('⚠️ '+e.message.slice(0,80));
+    addMsg('ai','A-ano… I got an error: '+e.message.slice(0,120));
+  }
+}
+
+sendBtn.addEventListener('click',()=>sendMsg(inputEl.value));
+inputEl.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg(inputEl.value);}
+});
+inputEl.addEventListener('input',()=>{
+  inputEl.style.height='';
+  inputEl.style.height=Math.min(inputEl.scrollHeight,100)+'px';
+});
+document.getElementById('btn-reset').addEventListener('click',()=>{
+  history=[];
+  stopAudio(); isTalking=false;
+  document.getElementById('wave').classList.remove('on');
+  setTTSStatus('');
+  while(msgsEl.firstChild!==typingEl) msgsEl.removeChild(msgsEl.firstChild);
+  addMsg('ai','Hai~ fresh start! What shall we talk about? ✿');
+  applyEmo('greeting'); emoGest('greeting');
+});
+document.querySelectorAll('.qbtn').forEach(b=>b.addEventListener('click',()=>sendMsg(b.dataset.msg)));
+
+/* ── Voice input ── */
+let recog=null;
+if('SpeechRecognition' in window||'webkitSpeechRecognition' in window){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  recog=new SR(); recog.lang='en-US'; recog.interimResults=false;
+  recog.onresult=e=>{ const t=e.results[0][0].transcript; inputEl.value=t; sendMsg(t); };
+  recog.onend=recog.onerror=()=>micBtn.classList.remove('rec');
+}
+micBtn.addEventListener('click',()=>{
+  if(!recog){addMsg('ai','Speech recognition not supported here~');return;}
+  if(micBtn.classList.contains('rec')){recog.stop();}
+  else{
+    // Stop any playing audio first
+    stopAudio(); isTalking=false;
+    document.getElementById('wave').classList.remove('on');
+    micBtn.classList.add('rec');
+    recog.start();
+  }
+});
+
+// Unlock AudioContext on first user interaction
+// Audio unlocks automatically via user gesture on the send/mic buttons
+</script>
+</body>
+</html>
