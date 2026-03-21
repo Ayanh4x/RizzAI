@@ -496,23 +496,147 @@ import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
 let history = [];
 
 /* ══════════════════════════════════════════════════════
-   AI CHAT — calls /api/chat (Cloudflare Function proxy)
+   IN-BROWSER LLM — WebLLM + Phi-3.5 Mini (~3.8GB)
+   Runs 100% locally via WebGPU — no API, free forever.
+   Falls back to Gemini API if WebGPU not available.
 ══════════════════════════════════════════════════════ */
+
+const SYSTEM_PROMPT = `You are RizzAI, a cheerful expressive anime companion assistant.
+Personality: warm, playful, enthusiastic, cute, a little dramatic in an adorable way.
+Use light anime expressions naturally like "Ehh?!", "Yatta!", "Hmm~", "A-ano...", "Ne ne!", "Kyaa~".
+Keep replies to 2-4 sentences. NO emojis at all.
+End EVERY reply with exactly one tag on its own line:
+[emotion:happy] [emotion:excited] [emotion:surprised] [emotion:thinking] [emotion:shy] [emotion:sad] [emotion:greeting] [emotion:listening]`;
+
+// Gemini fallback key (used if WebGPU not available)
+const GEMINI_KEY = 'AIzaSyAi2kvyiCkwcyEJuT2g4n4N-tdtm19_Z34';
+
+let llmEngine   = null;   // WebLLM engine
+let llmReady    = false;  // true once model loaded
+let llmLoading  = false;  // loading in progress
+let useWebLLM   = false;  // false = use Gemini fallback
+
+// Check WebGPU support
+async function checkWebGPU(){
+  if(!navigator.gpu) return false;
+  try{ const a=await navigator.gpu.requestAdapter(); return !!a; }
+  catch(_){ return false; }
+}
+
+// Load WebLLM — called once, shows progress in loading bar
+async function initWebLLM(){
+  if(llmLoading || llmReady) return;
+  llmLoading = true;
+  const hasGPU = await checkWebGPU();
+  if(!hasGPU){
+    console.log('No WebGPU — using Gemini API fallback');
+    llmLoading = false;
+    useWebLLM  = false;
+    setLLMStatus('☁️ Using Gemini AI');
+    setTimeout(()=>setLLMStatus(''),2000);
+    return;
+  }
+
+  try{
+    setLLMStatus('⬇️ Loading AI model… 0%');
+    const { CreateMLCEngine } = await import('https://esm.run/@mlc-ai/web-llm');
+
+    llmEngine = await CreateMLCEngine(
+      'Phi-3.5-mini-instruct-q4f16_1-MLC',
+      {
+        initProgressCallback: (p)=>{
+          const pct = Math.round((p.progress||0)*100);
+          setLLMStatus(`⬇️ Loading AI… ${pct}%`);
+          const fill = document.getElementById('lprogfill');
+          if(fill) fill.style.width = pct+'%';
+        },
+      }
+    );
+    llmReady  = true;
+    llmLoading= false;
+    useWebLLM = true;
+    setLLMStatus('🧠 AI ready (local)');
+    setTimeout(()=>setLLMStatus(''), 2500);
+    console.log('✅ WebLLM ready — Phi-3.5 Mini running locally');
+  }catch(e){
+    console.warn('WebLLM failed, using Gemini:', e.message);
+    llmLoading = false;
+    llmReady   = false;
+    useWebLLM  = false;
+    setLLMStatus('☁️ Using Gemini AI');
+    setTimeout(()=>setLLMStatus(''),2000);
+  }
+}
+
+function setLLMStatus(msg){
+  const el = document.getElementById('tts-status');
+  if(el && !msg.includes('Speaking') && !msg.includes('Generating')) el.textContent = msg;
+}
+
+// Parse emotion from reply
+function parseReply(raw){
+  const match = raw.match(/\[emotion:(\w+)\]/i);
+  const emo   = match ? match[1].toLowerCase() : 'happy';
+  const reply = raw.replace(/\[emotion:\w+\]/gi,'').trim();
+  return {reply, emo};
+}
+
+// Main AI call — tries WebLLM first, falls back to Gemini
 async function callAI(msg){
   history.push({role:'user', content:msg});
-  let res;
+
+  // ── WebLLM (in-browser) ──
+  if(llmReady && llmEngine){
+    try{
+      const messages = [
+        {role:'system', content:SYSTEM_PROMPT},
+        ...history.slice(-20).map(h=>({role:h.role==='assistant'?'assistant':'user', content:h.content})),
+      ];
+      const res  = await llmEngine.chat.completions.create({ messages, temperature:1.0, max_tokens:512 });
+      const raw  = res.choices[0].message.content ?? '';
+      const {reply,emo} = parseReply(raw);
+      history.push({role:'assistant', content:reply});
+      return {reply, emo};
+    }catch(e){
+      console.warn('WebLLM inference error, falling back to Gemini:', e);
+      history.pop();
+      history.push({role:'user', content:msg}); // re-add
+    }
+  }
+
+  // ── Gemini fallback ──
   try{
-    res = await fetch('/api/chat',{
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({ message:msg, history:history.slice(-40) }),
-    });
-  }catch(e){ history.pop(); throw new Error('Cannot reach server: '+e.message); }
-  if(!res.ok){ const t=await res.text().catch(()=>''); history.pop(); throw new Error(`API ${res.status}: ${t.slice(0,160)}`); }
-  const d=await res.json();
-  if(d.error){ history.pop(); throw new Error(d.error); }
-  history.push({role:'assistant',content:d.reply??''});
-  return {reply:d.reply??'', emo:d.emo??'happy'};
+    const contents = [];
+    for(const h of history.slice(-20)){
+      contents.push({ role:h.role==='assistant'?'model':'user', parts:[{text:h.content}] });
+    }
+    const r = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
+      {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          system_instruction:{ parts:[{text:SYSTEM_PROMPT}] },
+          contents,
+          generationConfig:{ temperature:1.0, topP:0.95, maxOutputTokens:512 },
+        }),
+      }
+    );
+    if(!r.ok){ const t=await r.text(); history.pop(); throw new Error(`Gemini ${r.status}: ${t.slice(0,120)}`); }
+    const d   = await r.json();
+    const raw = d.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+    const {reply,emo} = parseReply(raw);
+    history.push({role:'assistant', content:reply});
+    return {reply, emo};
+  }catch(e){
+    history.pop();
+    throw e;
+  }
 }
+
+// Start loading WebLLM after avatar finishes loading (3s delay)
+setTimeout(()=> initWebLLM().catch(e=>console.warn('initWebLLM:',e)), 3000);
+
 
 
 /* ══════════════════════════════════════════════════════
